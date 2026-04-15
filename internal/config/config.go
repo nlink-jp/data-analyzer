@@ -26,10 +26,11 @@ type APIConfig struct {
 
 // AnalysisConfig holds analysis engine settings.
 type AnalysisConfig struct {
-	ContextLimit int     `toml:"context_limit"`
-	OverlapRatio float64 `toml:"overlap_ratio"`
-	MaxFindings  int     `toml:"max_findings"`
-	Lang         string  `toml:"lang"`
+	ContextLimit        int     `toml:"context_limit"`
+	OverlapRatio        float64 `toml:"overlap_ratio"`
+	MaxFindings         int     `toml:"max_findings"`
+	MaxRecordsPerWindow int     `toml:"max_records_per_window"`
+	Lang                string  `toml:"lang"`
 }
 
 // JobConfig holds job management settings.
@@ -45,9 +46,10 @@ func Load(path string) (*Config, error) {
 			Model:    "google/gemma-4-26b-a4b",
 		},
 		Analysis: AnalysisConfig{
-			ContextLimit: 131072,
-			OverlapRatio: 0.1,
-			MaxFindings:  100,
+			ContextLimit:        131072,
+			OverlapRatio:        0.1,
+			MaxFindings:         100,
+			MaxRecordsPerWindow: 200,
 		},
 	}
 
@@ -90,6 +92,11 @@ func Load(path string) (*Config, error) {
 	if v := os.Getenv("DATA_ANALYZER_MAX_FINDINGS"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.Analysis.MaxFindings = n
+		}
+	}
+	if v := os.Getenv("DATA_ANALYZER_MAX_RECORDS_PER_WINDOW"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			cfg.Analysis.MaxRecordsPerWindow = n
 		}
 	}
 	if v := os.Getenv("DATA_ANALYZER_LANG"); v != "" {

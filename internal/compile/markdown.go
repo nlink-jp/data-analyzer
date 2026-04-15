@@ -57,10 +57,13 @@ func Markdown(w io.Writer, result *types.AnalysisResult) error {
 				fmt.Fprintf(w, "**Evidence:**\n\n")
 				for _, c := range f.Citations {
 					fmt.Fprintf(w, "- Record #%d (`%s`)\n", c.RecordIndex, c.Source)
-					if len(c.Excerpt) > 0 {
+					if len(c.Excerpt) > 0 && string(c.Excerpt) != "null" {
 						pretty, err := prettyJSON(c.Excerpt)
 						if err == nil {
 							fmt.Fprintf(w, "  ```json\n  %s\n  ```\n", indent(pretty, "  "))
+						} else {
+							// Fallback: output raw excerpt
+							fmt.Fprintf(w, "  ```\n  %s\n  ```\n", string(c.Excerpt))
 						}
 					}
 				}
@@ -97,13 +100,16 @@ func countSeverities(findings []types.Finding) map[string]int {
 	return counts
 }
 
-func truncate(s string, max int) string {
+func truncate(s string, maxRunes int) string {
 	// Replace newlines for table display
 	s = strings.ReplaceAll(s, "\n", " ")
-	if len(s) <= max {
+	// Escape pipe characters for Markdown table cells
+	s = strings.ReplaceAll(s, "|", "\\|")
+	runes := []rune(s)
+	if len(runes) <= maxRunes {
 		return s
 	}
-	return s[:max-3] + "..."
+	return string(runes[:maxRunes-1]) + "…"
 }
 
 func prettyJSON(raw json.RawMessage) (string, error) {

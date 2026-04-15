@@ -220,7 +220,7 @@ func TestTruncate(t *testing.T) {
 		want  string
 	}{
 		{"short", 10, "short"},
-		{"this is a long string", 10, "this is..."},
+		{"this is a long string", 10, "this is a…"},
 		{"newline\nin text", 20, "newline in text"},
 	}
 

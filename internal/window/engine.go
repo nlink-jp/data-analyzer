@@ -20,13 +20,14 @@ import (
 
 // EngineConfig holds configuration for the analysis engine.
 type EngineConfig struct {
-	ContextLimit int
-	OverlapRatio float64
-	MaxFindings  int
-	JobID        string
-	Params       *types.AnalysisParam
-	Stderr       io.Writer
-	Debug        bool
+	ContextLimit        int
+	OverlapRatio        float64
+	MaxFindings         int
+	MaxRecordsPerWindow int
+	JobID               string
+	Params              *types.AnalysisParam
+	Stderr              io.Writer
+	Debug               bool
 }
 
 // Engine orchestrates the sliding window analysis.
@@ -110,6 +111,10 @@ func (e *Engine) Run(ctx context.Context, records []types.Record, state *types.W
 		count := RecordsForBudget(remaining, mm.RawData)
 		if count == 0 {
 			count = 1 // always process at least one record
+		}
+		// Enforce max records per window to maintain LLM output quality
+		if e.cfg.MaxRecordsPerWindow > 0 && count > e.cfg.MaxRecordsPerWindow {
+			count = e.cfg.MaxRecordsPerWindow
 		}
 		windowRecords := remaining[:count]
 

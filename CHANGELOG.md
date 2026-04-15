@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.1.5] - 2026-04-15
+
+### Fixed
+- Description truncation garbled CJK characters — `truncate` was cutting on byte
+  boundaries instead of rune boundaries. Now uses `[]rune` slicing and `…` suffix.
+- Evidence/citation logs missing from reports — excerpts with `null` value or
+  prettyJSON failure now have fallback rendering.
+
+### Added
+- `max_records_per_window` config (default: 200) to cap window size and maintain
+  LLM output quality. Even when token budget allows more records, large windows
+  degrade analysis accuracy.
+- Parse failure retry for window responses.
+
 ## [0.1.4] - 2026-04-15
 
 ### Fixed

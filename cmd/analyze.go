@@ -111,13 +111,14 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	defer cancel()
 
 	engine := window.NewEngine(client, builder, mgr, &window.EngineConfig{
-		ContextLimit: cfg.Analysis.ContextLimit,
-		OverlapRatio: cfg.Analysis.OverlapRatio,
-		MaxFindings:  cfg.Analysis.MaxFindings,
-		JobID:        jobID,
-		Params:       params,
-		Stderr:       os.Stderr,
-		Debug:        flagDebug,
+		ContextLimit:        cfg.Analysis.ContextLimit,
+		OverlapRatio:        cfg.Analysis.OverlapRatio,
+		MaxFindings:         cfg.Analysis.MaxFindings,
+		MaxRecordsPerWindow: cfg.Analysis.MaxRecordsPerWindow,
+		JobID:               jobID,
+		Params:              params,
+		Stderr:              os.Stderr,
+		Debug:               flagDebug,
 	})
 
 	result, err := engine.Run(ctx, records, state)

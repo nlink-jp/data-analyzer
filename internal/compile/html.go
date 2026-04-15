@@ -75,10 +75,12 @@ func HTML(w io.Writer, result *types.AnalysisResult) error {
 					fmt.Fprintf(w, `<div class="citation">`)
 					fmt.Fprintf(w, `<div class="citation-header">Record #%d <code>%s</code></div>`,
 						c.RecordIndex, esc(c.Source))
-					if len(c.Excerpt) > 0 {
+					if len(c.Excerpt) > 0 && string(c.Excerpt) != "null" {
 						pretty, err := prettyJSON(c.Excerpt)
 						if err == nil {
 							fmt.Fprintf(w, `<pre><code>%s</code></pre>`, esc(pretty))
+						} else {
+							fmt.Fprintf(w, `<pre><code>%s</code></pre>`, esc(string(c.Excerpt)))
 						}
 					}
 					fmt.Fprint(w, `</div>`)
