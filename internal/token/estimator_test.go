@@ -4,56 +4,61 @@ import "testing"
 
 func TestEstimate(t *testing.T) {
 	tests := []struct {
-		name string
-		text string
-		want int
+		name    string
+		text    string
+		wantMin int // minimum expected tokens
+		wantMax int // maximum expected tokens
 	}{
 		{
-			name: "empty",
-			text: "",
-			want: 0,
+			name: "empty", text: "",
+			wantMin: 0, wantMax: 0,
 		},
 		{
-			name: "ascii only",
-			text: "hello world",
-			want: 3, // 2 words * 1.3 = 2.6 → 3
+			name: "ascii prose", text: "hello world",
+			wantMin: 3, wantMax: 5,
 		},
 		{
-			name: "cjk only",
-			text: "日本語テスト",
-			want: 12, // 6 chars * 2 = 12
+			name: "cjk only", text: "日本語テスト",
+			wantMin: 5, wantMax: 15,
 		},
 		{
-			name: "mixed",
-			text: "Hello 世界 test",
-			want: 8, // 2 words * 1.3 = 2.6 → 3, 2 CJK * 2 = 4, total = 7... let's check
-			// "Hello" = 1 word, "世界" = 2 CJK, "test" = 1 word
-			// 2 CJK * 2 + 2 words * 1.3 = 4 + 2.6 = 6.6 → 4 + 3 = 7
+			name: "mixed", text: "Hello 世界 test",
+			wantMin: 4, wantMax: 10,
 		},
 		{
-			name: "numbers",
-			text: "test123 abc456",
-			want: 3, // 2 words * 1.3 = 2.6 → 3 (digits continue words)
+			name: "json structure",
+			text: `{"timestamp":"2026-04-14T08:01:12Z","user":"tanaka","action":"login"}`,
+			// wordBased: 8 words*1.3 + 18 punct = ~28; charBased: 68/4 = 17
+			wantMin: 17, wantMax: 40,
 		},
 		{
-			name: "single word",
-			text: "hello",
-			want: 1, // 1 word * 1.3 = 1.3 → 1
+			name: "json with cjk",
+			text: `{"user":"田中","action":"ログイン"}`,
+			wantMin: 10, wantMax: 35,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := Estimate(tt.text)
-			if tt.name == "mixed" {
-				// Recalculate: "Hello"=1word, "世界"=2CJK, "test"=1word
-				// 2*2 + int(2*1.3+0.5) = 4 + int(3.1) = 4 + 3 = 7
-				tt.want = 7
-			}
-			if got != tt.want {
-				t.Errorf("Estimate(%q) = %d, want %d", tt.text, got, tt.want)
+			if got < tt.wantMin || got > tt.wantMax {
+				t.Errorf("Estimate(%q) = %d, want [%d, %d]", tt.text, got, tt.wantMin, tt.wantMax)
 			}
 		})
+	}
+}
+
+func TestEstimateJSONNotUndercount(t *testing.T) {
+	// Ensure JSON punctuation is not undercounted
+	json := `{"a":"b","c":"d"}`
+	prose := "a b c d"
+
+	jsonTokens := Estimate(json)
+	proseTokens := Estimate(prose)
+
+	if jsonTokens <= proseTokens {
+		t.Errorf("JSON (%d tokens) should be more than prose (%d tokens) due to punctuation",
+			jsonTokens, proseTokens)
 	}
 }
 

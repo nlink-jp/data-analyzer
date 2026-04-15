@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.4] - 2026-04-15
+
+### Fixed
+- Token estimator severely undercounted JSON/structured data (~4-5x undercount)
+  by ignoring punctuation characters. Now counts punctuation as tokens and uses
+  the higher of word-based and char-based estimates.
+- Window progress display now shows actual record range instead of misleading totals.
+- Parse failures trigger one automatic retry before skipping the window.
+
+### Added
+- Improved debug output (`--debug`) showing offset, count, budget, summary and
+  findings token sizes per window.
+
 ## [0.1.3] - 2026-04-15
 
 ### Added

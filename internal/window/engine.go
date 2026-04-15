@@ -119,27 +119,40 @@ func (e *Engine) Run(ctx context.Context, records []types.Record, state *types.W
 			return nil, fmt.Errorf("building prompt for window %d: %w", windowIndex, err)
 		}
 
-		if e.cfg.Debug {
-			fmt.Fprintf(e.cfg.Stderr, "[debug] window=%d records=%d-%d budget=%d\n",
-				windowIndex, recordOffset, recordOffset+count-1, mm.RawData)
-		}
-
 		// Progress display
-		progress := float64(recordOffset+count) / float64(len(records)) * 100
-		fmt.Fprintf(e.cfg.Stderr, "\rProcessing window %d (%d/%d records, %.0f%%)...",
-			windowIndex, recordOffset+count, len(records), progress)
+		endRecord := recordOffset + count
+		if endRecord > len(records) {
+			endRecord = len(records)
+		}
+		progress := float64(endRecord) / float64(len(records)) * 100
+		fmt.Fprintf(e.cfg.Stderr, "\rProcessing window %d (records %d–%d of %d, %.0f%%, %d in window)...",
+			windowIndex, recordOffset, endRecord-1, len(records), progress, count)
 
-		// Call LLM
-		response, err := e.client.Chat(ctx, systemPrompt, userPrompt)
-		if err != nil {
-			return nil, fmt.Errorf("LLM call for window %d: %w", windowIndex, err)
+		if e.cfg.Debug {
+			fmt.Fprintf(e.cfg.Stderr, "\n[debug] window=%d offset=%d count=%d budget=%d summary=%d findings=%d\n",
+				windowIndex, recordOffset, count, mm.RawData, summaryTokens, findingsTokens)
 		}
 
-		// Parse response
-		windowResp, err := parseWindowResponse(response, windowIndex, &findingCounter, sourceIndex)
-		if err != nil {
-			fmt.Fprintf(e.cfg.Stderr, "\nWarning: failed to parse window %d response, skipping: %v\n", windowIndex, err)
-			// Continue with next window rather than failing entirely
+		// Call LLM (retry once on parse failure)
+		var windowResp *types.WindowResponse
+		for attempt := range 2 {
+			response, err := e.client.Chat(ctx, systemPrompt, userPrompt)
+			if err != nil {
+				return nil, fmt.Errorf("LLM call for window %d: %w", windowIndex, err)
+			}
+
+			windowResp, err = parseWindowResponse(response, windowIndex, &findingCounter, sourceIndex)
+			if err == nil {
+				break
+			}
+			if attempt == 0 {
+				fmt.Fprintf(e.cfg.Stderr, "\nWarning: failed to parse window %d response, retrying: %v\n", windowIndex, err)
+			} else {
+				fmt.Fprintf(e.cfg.Stderr, "\nWarning: failed to parse window %d response after retry, skipping: %v\n", windowIndex, err)
+			}
+		}
+		if windowResp == nil {
+			// Both attempts failed — skip this window
 		} else {
 			summary = windowResp.Summary
 
