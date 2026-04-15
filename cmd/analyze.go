@@ -24,6 +24,7 @@ var (
 	flagResume  string
 	flagOutput  string
 	flagModel   string
+	flagLang    string
 )
 
 func newAnalyzeCmd() *cobra.Command {
@@ -42,6 +43,7 @@ Input can be files, directories, or stdin (use - for stdin).`,
 	cmd.Flags().StringVar(&flagResume, "resume", "", "resume job by ID")
 	cmd.Flags().StringVarP(&flagOutput, "output", "o", "", "output file (default: stdout)")
 	cmd.Flags().StringVarP(&flagModel, "model", "m", "", "model name override")
+	cmd.Flags().StringVar(&flagLang, "lang", "", "output language (e.g., Japanese, English)")
 
 	_ = cmd.MarkFlagRequired("params")
 
@@ -60,6 +62,13 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	params, err := loadParams(flagParams)
 	if err != nil {
 		return exitWithCode(fmt.Errorf("params: %w", err), exitInputError)
+	}
+
+	// Apply lang: CLI flag > params file > config
+	if flagLang != "" {
+		params.Lang = flagLang
+	} else if params.Lang == "" && cfg.Analysis.Lang != "" {
+		params.Lang = cfg.Analysis.Lang
 	}
 
 	// 3. Read input records

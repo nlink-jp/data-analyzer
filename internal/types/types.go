@@ -12,6 +12,7 @@ type AnalysisParam struct {
 	TargetFields    []string `json:"target_fields"`    // JSON fields to focus on
 	AttentionPoints []string `json:"attention_points"` // Specific things to watch
 	UserFindings    []string `json:"user_findings"`    // User-specified findings to track
+	Lang            string   `json:"lang,omitempty"`   // Output language (e.g., "Japanese", "English")
 }
 
 // Record is a single data record from the input.

@@ -246,6 +246,65 @@ func TestVerifyCitationsOutOfRange(t *testing.T) {
 	}
 }
 
+func TestVerifyCitationsRecoverFromDescription(t *testing.T) {
+	recordMap := map[int]*types.Record{
+		5: {Index: 5, Source: "test.jsonl", RawJSON: json.RawMessage(`{"user":"alice","action":"login"}`)},
+		8: {Index: 8, Source: "test.jsonl", RawJSON: json.RawMessage(`{"user":"bob","action":"logout"}`)},
+	}
+
+	// Finding has no citations but description mentions records
+	findings := []types.Finding{
+		{
+			ID:          "F-001",
+			Description: "Suspicious activity observed in Record #5 and Record #8",
+			Citations:   nil,
+		},
+	}
+
+	corrections := verifyCitations(findings, recordMap, io.Discard)
+	if corrections != 1 {
+		t.Errorf("expected 1 correction (recovery), got %d", corrections)
+	}
+	if len(findings[0].Citations) != 2 {
+		t.Fatalf("expected 2 recovered citations, got %d", len(findings[0].Citations))
+	}
+	if findings[0].Citations[0].RecordIndex != 5 {
+		t.Errorf("first citation index = %d, want 5", findings[0].Citations[0].RecordIndex)
+	}
+	if findings[0].Citations[1].RecordIndex != 8 {
+		t.Errorf("second citation index = %d, want 8", findings[0].Citations[1].RecordIndex)
+	}
+}
+
+func TestRecoverCitationsFromText(t *testing.T) {
+	recordMap := map[int]*types.Record{
+		1: {Index: 1, Source: "a.jsonl", RawJSON: json.RawMessage(`{"x":1}`)},
+		3: {Index: 3, Source: "a.jsonl", RawJSON: json.RawMessage(`{"x":3}`)},
+	}
+
+	tests := []struct {
+		name string
+		text string
+		want int
+	}{
+		{"standard", "See Record #1 and Record #3", 2},
+		{"no hash", "See Record 1", 1},
+		{"case insensitive", "see record #1", 1},
+		{"duplicate", "Record #1 again Record #1", 1},
+		{"no match", "no records here", 0},
+		{"out of range", "Record #99", 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := recoverCitations(tt.text, recordMap)
+			if len(got) != tt.want {
+				t.Errorf("recoverCitations(%q) = %d citations, want %d", tt.text, len(got), tt.want)
+			}
+		})
+	}
+}
+
 func TestVerifyCitationsMultipleMixed(t *testing.T) {
 	recordMap := map[int]*types.Record{
 		1: {Index: 1, Source: "a.jsonl", RawJSON: json.RawMessage(`{"x":1}`)},

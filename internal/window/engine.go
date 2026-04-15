@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/nlink-jp/data-analyzer/internal/job"
@@ -356,11 +358,52 @@ func verifyCitations(findings []types.Finding, recordMap map[int]*types.Record, 
 
 		f.Citations = valid
 
-		// Alert if all citations were removed
-		if len(f.Citations) == 0 && len(findings[i].Citations) > 0 {
-			fmt.Fprintf(w, "  [citation-verify] WARNING: %s has no valid citations — finding may be hallucinated\n", f.ID)
+		// If no citations remain, try to recover from description text
+		if len(f.Citations) == 0 {
+			recovered := recoverCitations(f.Description, recordMap)
+			if len(recovered) > 0 {
+				f.Citations = recovered
+				corrections++
+				fmt.Fprintf(w, "  [citation-verify] %s: recovered %d citation(s) from description\n", f.ID, len(recovered))
+			} else {
+				fmt.Fprintf(w, "  [citation-verify] WARNING: %s has no valid citations — finding may be hallucinated\n", f.ID)
+			}
 		}
 	}
 
 	return corrections
+}
+
+var reRecordRef = regexp.MustCompile(`(?i)Record\s*#?(\d+)`)
+
+// recoverCitations extracts Record #N references from text and builds
+// citations from the original records.
+func recoverCitations(text string, recordMap map[int]*types.Record) []types.Citation {
+	matches := reRecordRef.FindAllStringSubmatch(text, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+
+	seen := make(map[int]bool)
+	var citations []types.Citation
+	for _, m := range matches {
+		idx, err := strconv.Atoi(m[1])
+		if err != nil || seen[idx] {
+			continue
+		}
+		seen[idx] = true
+
+		rec, ok := recordMap[idx]
+		if !ok {
+			continue
+		}
+
+		citations = append(citations, types.Citation{
+			RecordIndex: idx,
+			Source:      rec.Source,
+			Excerpt:     rec.RawJSON,
+		})
+	}
+
+	return citations
 }

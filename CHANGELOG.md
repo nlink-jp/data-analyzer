@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.3] - 2026-04-15
+
+### Added
+- `--lang` flag and `lang` field in params for output language control
+  (e.g., `--lang Japanese`). Also configurable via `DATA_ANALYZER_LANG` env var
+  or `analysis.lang` in config.toml.
+- Citation recovery: when LLM returns findings with empty citations, the engine
+  extracts Record #N references from the description text and builds citations
+  from the original data.
+
 ## [0.1.2] - 2026-04-15
 
 ### Fixed

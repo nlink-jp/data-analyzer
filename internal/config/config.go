@@ -29,6 +29,7 @@ type AnalysisConfig struct {
 	ContextLimit int     `toml:"context_limit"`
 	OverlapRatio float64 `toml:"overlap_ratio"`
 	MaxFindings  int     `toml:"max_findings"`
+	Lang         string  `toml:"lang"`
 }
 
 // JobConfig holds job management settings.
@@ -90,6 +91,9 @@ func Load(path string) (*Config, error) {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.Analysis.MaxFindings = n
 		}
+	}
+	if v := os.Getenv("DATA_ANALYZER_LANG"); v != "" {
+		cfg.Analysis.Lang = v
 	}
 	if v := os.Getenv("DATA_ANALYZER_TEMP_DIR"); v != "" {
 		cfg.Job.TempDir = v
