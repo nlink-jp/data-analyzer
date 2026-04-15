@@ -273,6 +273,80 @@ func TestSessionRunWithFileInputThenRefine(t *testing.T) {
 	}
 }
 
+func TestSessionRunWithSampleData(t *testing.T) {
+	params := types.AnalysisParam{
+		Perspective:     "Detect anomalous login patterns",
+		TargetFields:    []string{"timestamp", "user", "action", "source_ip"},
+		AttentionPoints: []string{"Failed logins from unknown IPs"},
+	}
+	paramsJSON, _ := json.Marshal(params)
+
+	client := &mockClient{
+		responses: []string{string(paramsJSON)},
+	}
+
+	stdin := strings.NewReader("Find suspicious activity\n\n\n")
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	session := NewSession(client, stdin, stdout, stderr)
+	session.SetSampleRecords([]types.Record{
+		{Index: 0, Source: "test.jsonl", RawJSON: json.RawMessage(`{"timestamp":"2026-04-14T08:00:00Z","user":"tanaka","action":"login","source_ip":"192.168.1.10"}`)},
+		{Index: 1, Source: "test.jsonl", RawJSON: json.RawMessage(`{"timestamp":"2026-04-14T08:05:00Z","user":"suzuki","action":"logout","source_ip":"192.168.1.20"}`)},
+	})
+
+	result, err := session.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if result.Perspective == "" {
+		t.Error("expected non-empty perspective")
+	}
+
+	// Verify LLM received sample data in system prompt
+	if client.callCount != 1 {
+		t.Fatalf("LLM call count = %d, want 1", client.callCount)
+	}
+}
+
+func TestSetSampleRecordsCapsAt5(t *testing.T) {
+	session := NewSession(nil, nil, nil, nil)
+
+	records := make([]types.Record, 10)
+	for i := range records {
+		records[i] = types.Record{Index: i, RawJSON: json.RawMessage(`{}`)}
+	}
+	session.SetSampleRecords(records)
+
+	if len(session.samples) != 5 {
+		t.Errorf("samples = %d, want 5 (capped)", len(session.samples))
+	}
+}
+
+func TestBuildCompilePromptWithSamples(t *testing.T) {
+	session := NewSession(nil, nil, nil, nil)
+	session.SetSampleRecords([]types.Record{
+		{Index: 0, RawJSON: json.RawMessage(`{"user":"alice","action":"login"}`)},
+	})
+
+	prompt := session.buildCompilePrompt()
+	if !strings.Contains(prompt, "Sample Data Records") {
+		t.Error("prompt missing sample data section")
+	}
+	if !strings.Contains(prompt, "alice") {
+		t.Error("prompt missing sample record content")
+	}
+}
+
+func TestBuildCompilePromptWithoutSamples(t *testing.T) {
+	session := NewSession(nil, nil, nil, nil)
+
+	prompt := session.buildCompilePrompt()
+	if strings.Contains(prompt, "Sample Data Records") {
+		t.Error("prompt should not have sample section without samples")
+	}
+}
+
 func TestReadMultiLine(t *testing.T) {
 	tests := []struct {
 		name  string

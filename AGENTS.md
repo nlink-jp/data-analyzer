@@ -25,7 +25,7 @@ make clean        # rm -rf dist/
 cmd/
   root.go          — Cobra root command, global flags
   analyze.go       — analyze subcommand
-  prepare.go       — prepare subcommand (interactive)
+  prepare.go       — prepare subcommand (interactive, --sample for field discovery)
   compile.go       — compile subcommand (Markdown/HTML)
 internal/
   config/          — TOML + env var + flag 3-layer configuration

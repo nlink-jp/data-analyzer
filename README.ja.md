@@ -49,8 +49,11 @@ LLMの支援を受けて対話的にパラメータを構築：
 # 対話モード（複数行入力対応、空行で入力確定）
 data-analyzer prepare --output params.json
 
-# ファイルから要件を読み込み、その後対話的にリファイン
-data-analyzer prepare --input requirements.txt --output params.json
+# サンプルデータ付き — LLMが実際のフィールド名と値を参照して提案
+data-analyzer prepare --sample logs.jsonl --output params.json
+
+# ファイルから要件＋サンプルデータ、その後対話的にリファイン
+data-analyzer prepare --input requirements.txt --sample logs.jsonl --output params.json
 ```
 
 または `params.json` を手動作成：

@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.9] - 2026-04-15
+
+### Added
+- `prepare --sample` flag to provide sample data for field discovery. The LLM
+  sees actual record structure and values, producing more accurate target_fields
+  and attention_points. Sample data is also included in refinement prompts.
+
 ## [0.1.8] - 2026-04-15
 
 ### Fixed

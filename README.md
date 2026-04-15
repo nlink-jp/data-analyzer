@@ -50,8 +50,11 @@ Build parameters interactively with LLM assistance:
 # Interactive mode (supports multi-line input, end with empty line)
 data-analyzer prepare --output params.json
 
-# Load requirements from file, then refine interactively
-data-analyzer prepare --input requirements.txt --output params.json
+# With sample data — LLM sees actual field names and values
+data-analyzer prepare --sample logs.jsonl --output params.json
+
+# Load requirements from file + sample data, then refine interactively
+data-analyzer prepare --input requirements.txt --sample logs.jsonl --output params.json
 ```
 
 Or create `params.json` manually:

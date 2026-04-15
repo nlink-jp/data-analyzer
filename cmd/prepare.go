@@ -8,12 +8,14 @@ import (
 	"github.com/nlink-jp/data-analyzer/internal/config"
 	"github.com/nlink-jp/data-analyzer/internal/llm"
 	"github.com/nlink-jp/data-analyzer/internal/prepare"
+	"github.com/nlink-jp/data-analyzer/internal/reader"
 	"github.com/spf13/cobra"
 )
 
 var (
 	flagPrepareOutput string
 	flagPrepareInput  string
+	flagPrepareSample string
 )
 
 func newPrepareCmd() *cobra.Command {
@@ -23,12 +25,14 @@ func newPrepareCmd() *cobra.Command {
 		Long: `Interactively build analysis parameters through a conversation with the LLM.
 The generated parameter file can be used with the 'analyze' subcommand.
 
-Use --input to load initial requirements from a file, then refine interactively.`,
+Use --input to load initial requirements from a file, then refine interactively.
+Use --sample to provide sample data so the LLM can see actual field names and values.`,
 		RunE: runPrepare,
 	}
 
 	cmd.Flags().StringVarP(&flagPrepareOutput, "output", "o", "", "output file for parameter JSON (default: stdout)")
 	cmd.Flags().StringVarP(&flagPrepareInput, "input", "i", "", "load initial requirements from file")
+	cmd.Flags().StringVarP(&flagPrepareSample, "sample", "s", "", "sample data file (JSON/JSONL) for field discovery")
 
 	return cmd
 }
@@ -43,6 +47,16 @@ func runPrepare(cmd *cobra.Command, args []string) error {
 	client := llm.NewHTTPClient(cfg.API.Endpoint, cfg.API.Model, cfg.API.APIKey)
 
 	session := prepare.NewSession(client, os.Stdin, os.Stdout, os.Stderr)
+
+	// Load sample data if specified
+	if flagPrepareSample != "" {
+		records, err := reader.ReadAll([]string{flagPrepareSample})
+		if err != nil {
+			return exitWithCode(fmt.Errorf("reading sample data: %w", err), exitInputError)
+		}
+		session.SetSampleRecords(records)
+		fmt.Fprintf(os.Stderr, "Loaded %d sample records from %s\n", len(records), flagPrepareSample)
+	}
 
 	// Load initial requirements from file if specified
 	var initialInput string

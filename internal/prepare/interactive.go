@@ -45,12 +45,15 @@ const refineSystemPrompt = `You are an analysis parameter compiler. The user wan
 3. Output the complete updated parameter set as JSON
 4. Output ONLY valid JSON — no other text`
 
+const maxSampleRecords = 5
+
 // Session manages an interactive parameter-building conversation.
 type Session struct {
-	client llm.Client
-	stdin  io.Reader
-	stdout io.Writer
-	stderr io.Writer
+	client  llm.Client
+	stdin   io.Reader
+	stdout  io.Writer
+	stderr  io.Writer
+	samples []types.Record
 }
 
 // NewSession creates a new interactive session.
@@ -61,6 +64,15 @@ func NewSession(client llm.Client, stdin io.Reader, stdout, stderr io.Writer) *S
 		stdout: stdout,
 		stderr: stderr,
 	}
+}
+
+// SetSampleRecords sets sample data records for field discovery.
+// Only the first few records are used to keep the prompt compact.
+func (s *Session) SetSampleRecords(records []types.Record) {
+	if len(records) > maxSampleRecords {
+		records = records[:maxSampleRecords]
+	}
+	s.samples = records
 }
 
 // Run executes the interactive parameter building loop.
@@ -107,7 +119,8 @@ func (s *Session) RunWithInput(ctx context.Context, initialInput string) (*types
 	// Compile initial parameters
 	fmt.Fprintln(s.stderr, "Compiling analysis parameters...")
 
-	response, err := s.client.Chat(ctx, compileSystemPrompt, description)
+	sysPrompt := s.buildCompilePrompt()
+	response, err := s.client.Chat(ctx, sysPrompt, description)
 	if err != nil {
 		return nil, fmt.Errorf("LLM compilation: %w", err)
 	}
@@ -145,7 +158,7 @@ func (s *Session) RunWithInput(ctx context.Context, initialInput string) (*types
 		fmt.Fprintln(s.stderr, "Refining parameters...")
 
 		currentJSON, _ := json.MarshalIndent(params, "", "  ")
-		sysPrompt := fmt.Sprintf(refineSystemPrompt, string(currentJSON))
+		sysPrompt := s.buildRefinePrompt(string(currentJSON))
 
 		response, err := s.client.Chat(ctx, sysPrompt, input)
 		if err != nil {
@@ -209,6 +222,35 @@ func (s *Session) displayParams(params *types.AnalysisParam) {
 			fmt.Fprintf(s.stdout, "  - %s\n", f)
 		}
 	}
+}
+
+func (s *Session) buildRefinePrompt(currentParamsJSON string) string {
+	base := fmt.Sprintf(refineSystemPrompt, currentParamsJSON)
+	if len(s.samples) == 0 {
+		return base
+	}
+	return base + "\n\n" + s.sampleDataSection()
+}
+
+// buildCompilePrompt constructs the system prompt, including sample data if available.
+func (s *Session) buildCompilePrompt() string {
+	if len(s.samples) == 0 {
+		return compileSystemPrompt
+	}
+	return compileSystemPrompt + "\n\n" + s.sampleDataSection()
+}
+
+func (s *Session) sampleDataSection() string {
+	var sb strings.Builder
+	sb.WriteString("## Sample Data Records\n")
+	sb.WriteString("The following are actual records from the dataset. Use these to identify\n")
+	sb.WriteString("relevant field names for target_fields and realistic attention_points.\n\n")
+
+	for i, r := range s.samples {
+		sb.WriteString(fmt.Sprintf("Record %d:\n```json\n%s\n```\n\n", i+1, string(r.RawJSON)))
+	}
+
+	return sb.String()
 }
 
 func parseParams(text string) (*types.AnalysisParam, error) {
