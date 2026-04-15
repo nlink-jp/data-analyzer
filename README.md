@@ -9,11 +9,12 @@ context window limitations — no Map-Reduce information loss.
 
 - Analyze up to 100K+ JSON/JSONL records with local LLMs
 - Sliding window engine with overlap for boundary context preservation
-- Every finding must cite source records (anti-hallucination)
+- Citation verification — every finding cites source records, verified against originals
 - Checkpoint-based resume for long-running analysis
 - Idempotent job execution
-- Interactive parameter builder
-- Markdown report output
+- Interactive parameter builder (with file input support)
+- Markdown and HTML report output
+- Output language control (`--lang Japanese`)
 
 ## Requirements
 
@@ -46,7 +47,11 @@ cp config.example.toml ~/.config/data-analyzer/config.toml
 Build parameters interactively with LLM assistance:
 
 ```bash
+# Interactive mode (supports multi-line input, end with empty line)
 data-analyzer prepare --output params.json
+
+# Load requirements from file, then refine interactively
+data-analyzer prepare --input requirements.txt --output params.json
 ```
 
 Or create `params.json` manually:
@@ -60,7 +65,8 @@ Or create `params.json` manually:
     "Privilege escalation",
     "Large data transfers to external services"
   ],
-  "user_findings": []
+  "user_findings": [],
+  "lang": "Japanese"
 }
 ```
 
@@ -73,8 +79,8 @@ data-analyzer analyze --params params.json logs.jsonl
 # Directory (all .json/.jsonl files)
 data-analyzer analyze --params params.json ./log_dir/
 
-# With output file
-data-analyzer analyze --params params.json --output result.json logs.jsonl
+# With output file and language
+data-analyzer analyze --params params.json --lang Japanese --output result.json logs.jsonl
 
 # Resume interrupted analysis
 data-analyzer analyze --params params.json --resume <job-id> logs.jsonl
@@ -86,8 +92,11 @@ data-analyzer analyze --params params.json --resume <job-id> logs.jsonl
 # Markdown to stdout
 data-analyzer compile result.json
 
-# Markdown to file
-data-analyzer compile --output report.md result.json
+# HTML report
+data-analyzer compile --format html --output report.html result.json
+
+# Both Markdown and HTML
+data-analyzer compile --format both --output report result.json
 
 # From stdin
 cat result.json | data-analyzer compile -
@@ -105,6 +114,8 @@ Settings are loaded in order: defaults → config file → env vars → CLI flag
 | `DATA_ANALYZER_CONTEXT_LIMIT` | `131072` | Context window budget (tokens) |
 | `DATA_ANALYZER_OVERLAP_RATIO` | `0.1` | Window overlap ratio (0.0–1.0) |
 | `DATA_ANALYZER_MAX_FINDINGS` | `100` | Max findings to accumulate |
+| `DATA_ANALYZER_MAX_RECORDS_PER_WINDOW` | `200` | Max records per window (quality guard) |
+| `DATA_ANALYZER_LANG` | — | Output language (e.g., `Japanese`) |
 | `DATA_ANALYZER_TEMP_DIR` | `$TMPDIR/data-analyzer` | Checkpoint directory |
 
 ## How It Works
@@ -112,18 +123,27 @@ Settings are loaded in order: defaults → config file → env vars → CLI flag
 ```
 ┌─────────────┐    ┌──────────────┐    ┌──────────────┐
 │   prepare    │───▶│   analyze    │───▶│   compile    │
-│ (interactive)│    │(sliding win) │    │ (markdown)   │
+│ (interactive)│    │(sliding win) │    │(md/html/both)│
 └─────────────┘    └──────────────┘    └──────────────┘
-   params.json        result.json        report.md
+   params.json        result.json       report.md/.html
 ```
 
 **Sliding Window Algorithm:**
 
-1. Divide records into overlapping windows that fit the context budget
+1. Divide records into overlapping windows (max 200 records per window)
 2. For each window: `[Previous Summary] + [Findings] + [New Data]` → LLM
 3. LLM returns updated summary + new findings with record citations
-4. Checkpoint saved after each window (resume on interruption)
-5. Final report generated from accumulated findings
+4. Citation verification: check excerpt relevance, replace with full original record
+5. Checkpoint saved after each window (resume on interruption)
+6. Final report generated from accumulated findings
+
+**Citation Verification:**
+
+Every citation from the LLM is verified against the original data:
+- Excerpt values checked for relevance against the original record
+- Excerpts always replaced with the full original record (no field omission)
+- Non-matching excerpts flagged as possible hallucination
+- Missing citations recovered from `Record #N` references in description text
 
 **Memory Map (128K token budget):**
 

@@ -4,9 +4,11 @@ model    = "google/gemma-4-26b-a4b"
 api_key  = ""
 
 [analysis]
-context_limit = 131072  # 128K tokens
-overlap_ratio = 0.1     # 10% overlap between windows
-max_findings  = 100
+context_limit          = 131072  # 128K tokens
+overlap_ratio          = 0.1     # 10% overlap between windows
+max_findings           = 100
+max_records_per_window = 200     # quality guard: cap records per LLM call
+lang                   = ""      # output language (e.g., "Japanese")
 
 [job]
 temp_dir = ""  # default: os.TempDir()/data-analyzer

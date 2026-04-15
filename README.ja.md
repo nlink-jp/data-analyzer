@@ -8,11 +8,12 @@
 
 - 10万件以上のJSON/JSONLレコードをローカルLLMで分析
 - オーバーラップ付きスライドウィンドウで境界コンテキストを保持
-- すべてのFindingにソースレコードの引用を義務付け（ハルシネーション対策）
+- citation検証 — すべてのFindingがソースレコードを引用し、オリジナルと照合
 - チェックポイントベースの中断再開
 - 冪等なジョブ実行
-- 対話的パラメータ構築
-- Markdownレポート出力
+- 対話的パラメータ構築（ファイル入力対応）
+- Markdown / HTMLレポート出力
+- 出力言語制御（`--lang Japanese`）
 
 ## 必要環境
 
@@ -45,7 +46,11 @@ cp config.example.toml ~/.config/data-analyzer/config.toml
 LLMの支援を受けて対話的にパラメータを構築：
 
 ```bash
+# 対話モード（複数行入力対応、空行で入力確定）
 data-analyzer prepare --output params.json
+
+# ファイルから要件を読み込み、その後対話的にリファイン
+data-analyzer prepare --input requirements.txt --output params.json
 ```
 
 または `params.json` を手動作成：
@@ -59,7 +64,8 @@ data-analyzer prepare --output params.json
     "権限昇格",
     "外部サービスへの大量データ転送"
   ],
-  "user_findings": []
+  "user_findings": [],
+  "lang": "Japanese"
 }
 ```
 
@@ -72,8 +78,8 @@ data-analyzer analyze --params params.json logs.jsonl
 # ディレクトリ（.json/.jsonlファイルを一括処理）
 data-analyzer analyze --params params.json ./log_dir/
 
-# 出力ファイル指定
-data-analyzer analyze --params params.json --output result.json logs.jsonl
+# 出力ファイル＋言語指定
+data-analyzer analyze --params params.json --lang Japanese --output result.json logs.jsonl
 
 # 中断した分析の再開
 data-analyzer analyze --params params.json --resume <job-id> logs.jsonl
@@ -85,8 +91,11 @@ data-analyzer analyze --params params.json --resume <job-id> logs.jsonl
 # Markdownを標準出力に
 data-analyzer compile result.json
 
-# Markdownをファイルに出力
-data-analyzer compile --output report.md result.json
+# HTMLレポート
+data-analyzer compile --format html --output report.html result.json
+
+# MarkdownとHTML両方
+data-analyzer compile --format both --output report result.json
 
 # 標準入力から
 cat result.json | data-analyzer compile -
@@ -104,6 +113,8 @@ cat result.json | data-analyzer compile -
 | `DATA_ANALYZER_CONTEXT_LIMIT` | `131072` | コンテキストウィンドウ予算（トークン数） |
 | `DATA_ANALYZER_OVERLAP_RATIO` | `0.1` | ウィンドウオーバーラップ率（0.0–1.0） |
 | `DATA_ANALYZER_MAX_FINDINGS` | `100` | 蓄積するFindingsの最大数 |
+| `DATA_ANALYZER_MAX_RECORDS_PER_WINDOW` | `200` | ウィンドウあたりの最大レコード数（品質ガード） |
+| `DATA_ANALYZER_LANG` | — | 出力言語（例：`Japanese`） |
 | `DATA_ANALYZER_TEMP_DIR` | `$TMPDIR/data-analyzer` | チェックポイントディレクトリ |
 
 ## 動作原理
@@ -111,18 +122,27 @@ cat result.json | data-analyzer compile -
 ```
 ┌─────────────┐    ┌──────────────┐    ┌──────────────┐
 │   prepare    │───▶│   analyze    │───▶│   compile    │
-│  （対話的）   │    │（ｽﾗｲﾄﾞｳｨﾝﾄﾞｳ）│    │（markdown）  │
+│  （対話的）   │    │（ｽﾗｲﾄﾞｳｨﾝﾄﾞｳ）│    │(md/html/both)│
 └─────────────┘    └──────────────┘    └──────────────┘
-   params.json        result.json        report.md
+   params.json        result.json       report.md/.html
 ```
 
 **スライドウィンドウアルゴリズム：**
 
-1. レコードをコンテキスト予算に収まるオーバーラップ付きウィンドウに分割
+1. レコードをオーバーラップ付きウィンドウに分割（最大200件/ウィンドウ）
 2. 各ウィンドウ：`[前回要約] + [蓄積Findings] + [新RAWデータ]` → LLM
 3. LLMが更新された要約＋レコード引用付きの新Findingsを返却
-4. 各ウィンドウ処理後にチェックポイントを保存（中断時に再開可能）
-5. 蓄積されたFindingsから最終レポートを生成
+4. citation検証：excerptの関連性を確認し、オリジナルレコード全体に差替
+5. 各ウィンドウ処理後にチェックポイントを保存（中断時に再開可能）
+6. 蓄積されたFindingsから最終レポートを生成
+
+**citation検証：**
+
+LLMからの全citationをオリジナルデータと照合：
+- excerptの値がオリジナルレコードに存在するか関連性チェック
+- excerptは常にオリジナルレコード全体に差替（フィールド省略なし）
+- 一致しないexcerptはハルシネーションの可能性として警告
+- 欠損citationはdescription中の`Record #N`参照から復旧
 
 **メモリマップ（128Kトークン予算）：**
 
