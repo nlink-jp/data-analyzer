@@ -46,6 +46,21 @@ Window 2: [Summary₁] + [Findings₀₊₁] + [RAW data chunk 2] → LLM → Su
 - Embedding-based similarity misses temporal patterns (e.g., brute-force
   attempts that only look suspicious as a sequence, not individually).
 
+## Why Cap Window Size (max_records_per_window)
+
+Even when the token budget allows 500+ records in a single window, LLM output
+quality degrades significantly with very large inputs. We observed this in
+production: 559 records fit within 128K tokens mathematically, but the model
+produced truncated JSON, omitted fields from citations, and generated
+shallower analysis compared to smaller windows.
+
+`max_records_per_window` (default: 200) enforces a hard cap regardless of
+token budget. This is a **quality guard**, not a memory guard. The token budget
+controls what fits; the record cap controls what produces good results.
+
+With 559 records and max 200 per window, the engine processes ~3 windows of
+200 + overlap, producing better findings than 1 window of 559.
+
 ## Why Separate Findings from Summary
 
 Findings and summary serve different purposes:
@@ -64,6 +79,47 @@ By keeping them separate, we can also apply priority-based eviction: when
 findings exceed the context budget, we evict low-severity items (FIFO) while
 always retaining high-severity ones. Evicted findings remain in the final
 output — they're just not included in subsequent LLM context.
+
+## Why Citation Verification (Not Trust)
+
+Every Finding must reference at least one source record by its `[Record #N]`
+index. But **we never trust the LLM's excerpt**. Instead, the engine performs
+a three-layer verification:
+
+### Layer 1: Record Index Validation
+If the record index is out of range, the citation is removed. This catches
+cases where the LLM fabricates a record number entirely.
+
+### Layer 2: Relevance Check
+The engine checks whether the LLM's excerpt values actually exist in the
+original record. This is a substring match: if at least one non-trivial value
+from the excerpt appears in the original JSON, the citation is considered
+relevant. This catches fabricated field values while tolerating field selection
+(the LLM may cite only a subset of fields).
+
+### Layer 3: Forced Original Replacement
+Regardless of relevance, the excerpt is **always replaced with the full
+original record**. LLM excerpts frequently omit fields, reformat values, or
+include partial data. By replacing with the original, every citation in the
+final report contains the complete, unmodified source data.
+
+### Hallucination Warning
+If a citation's excerpt values are entirely absent from the original record
+(Layer 2 fails), the engine emits a warning. The citation is still included
+with the original record — the user sees the actual data and can judge
+whether the finding is valid.
+
+### Citation Recovery
+When a Finding has no citations at all (LLM returned empty `citations[]`),
+the engine extracts `Record #N` references from the finding's description
+text and builds citations from the original records. This recovers evidence
+that the LLM referenced in prose but failed to structure as JSON.
+
+**Why not just validate and keep the LLM's excerpt?**
+Because local LLMs consistently produce excerpts that are technically valid
+JSON but omit important fields. In a 559-record test, every single citation
+needed correction — the LLM always selected a subset of fields. Showing
+partial excerpts hides context that may be critical for the analyst.
 
 ## Why Mandatory Citations
 
@@ -84,8 +140,24 @@ deliberately limit to 128K because:
    they approach their context limit. The 50% margin keeps us in the
    high-quality zone.
 2. **Response budget** — The model needs room to generate output (5K reserved).
-3. **Safety margin** — Token estimation is approximate (CJK heuristic), so a
+3. **Safety margin** — Token estimation is approximate (see below), so a
    buffer prevents truncation errors.
+
+## Why Dual Token Estimation
+
+Token estimation for mixed CJK/ASCII/JSON content is inherently approximate.
+We use two independent estimators and take the maximum:
+
+1. **Word-based** — CJK chars × 2 + ASCII words × 1.3 + punctuation count.
+   Good for natural language prose.
+2. **Char-based** — Total characters ÷ 4. Good for structured data (JSON)
+   where punctuation dominates.
+
+**Why the dual approach?** Early versions used word-based estimation only,
+which counted JSON punctuation (`{`, `"`, `:`, `,`) as zero tokens. This
+caused a ~4-5× undercount for JSON data, allowing 559 records into a single
+window when the LLM could only handle ~200 effectively. The char-based
+estimator catches these cases.
 
 ## Why the Memory Map
 
@@ -103,6 +175,9 @@ Later windows process fewer records per window, but this is acceptable because:
 - Patterns that span the dataset are already captured in earlier summaries.
 - The overlap ensures nothing falls through the cracks.
 
+Note: the memory map operates alongside `max_records_per_window`. The actual
+window size is `min(token_budget_allows, max_records_per_window)`.
+
 ## Why Three Subcommands
 
 The `prepare → analyze → compile` pipeline follows Unix philosophy: each step
@@ -115,6 +190,38 @@ does one thing, produces an intermediate artifact, and can be run independently.
 - `compile` can be re-run without re-analyzing: change report format, add
   sections, or pipe through other tools.
 - Debugging is easier: inspect `params.json` and `result.json` independently.
+
+**Why `prepare --input`?**
+When users paste large multi-line prompts into a terminal, `bufio.Scanner`
+reads only the first line — remaining lines leak to the shell and are
+executed as commands. This caused real incidents (zsh executing domain names
+as commands). `--input` loads requirements from a file, bypassing terminal
+paste issues entirely, then enters interactive refinement mode.
+
+## Why Output Language Control
+
+LLMs default to the language of their prompts (English in our case). For
+Japanese-speaking analysts reviewing Japanese log data, English reports create
+unnecessary friction. The `--lang` flag injects a language instruction into
+both the window analysis prompt and the final report prompt, ensuring summary
+text and finding descriptions are in the specified language.
+
+Language is configurable at three levels (highest priority wins):
+1. CLI flag: `--lang Japanese`
+2. Parameter file: `"lang": "Japanese"` in params.json
+3. Config: `analysis.lang` in config.toml or `DATA_ANALYZER_LANG` env var
+
+## Why Parse Retry
+
+Local LLMs occasionally produce malformed JSON that `nlk/jsonfix` cannot
+repair (e.g., truncated mid-string with markdown fencing). Rather than
+discarding an entire window's analysis, the engine retries once. The retry
+often succeeds because LLM output is non-deterministic — the same prompt
+may produce valid JSON on the second attempt.
+
+If both attempts fail, the window is skipped and analysis continues. This
+is preferable to aborting the entire job, which could waste hours of prior
+computation.
 
 ## Why Checkpoints and Idempotency
 
