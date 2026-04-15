@@ -95,8 +95,10 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		return exitWithCode(fmt.Errorf("job: %w", err), exitGeneralError)
 	}
 
+	fmt.Fprintf(os.Stderr, "Job ID: %s\n", jobID)
+
 	if result, ok := mgr.GetResult(jobID); ok {
-		fmt.Fprintf(os.Stderr, "Job %s already completed, returning cached result\n", jobID)
+		fmt.Fprintf(os.Stderr, "Job already completed, returning cached result\n")
 		return writeResult(result, flagOutput)
 	}
 
