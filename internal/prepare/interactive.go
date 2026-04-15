@@ -67,6 +67,7 @@ func NewSession(client llm.Client, stdin io.Reader, stdout, stderr io.Writer) *S
 // Returns the finalized AnalysisParam.
 func (s *Session) Run(ctx context.Context) (*types.AnalysisParam, error) {
 	scanner := bufio.NewScanner(s.stdin)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // up to 1MB per line
 
 	fmt.Fprintln(s.stdout, "=== data-analyzer: Analysis Parameter Builder ===")
 	fmt.Fprintln(s.stdout)
@@ -79,6 +80,9 @@ func (s *Session) Run(ctx context.Context) (*types.AnalysisParam, error) {
 
 	// Step 1: Get initial description
 	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return nil, fmt.Errorf("reading input: %w", err)
+		}
 		return nil, fmt.Errorf("no input received")
 	}
 	description := scanner.Text()
@@ -110,6 +114,9 @@ func (s *Session) Run(ctx context.Context) (*types.AnalysisParam, error) {
 		fmt.Fprint(s.stdout, "> ")
 
 		if !scanner.Scan() {
+			if err := scanner.Err(); err != nil {
+				return nil, fmt.Errorf("reading input: %w", err)
+			}
 			break
 		}
 		input := strings.TrimSpace(scanner.Text())

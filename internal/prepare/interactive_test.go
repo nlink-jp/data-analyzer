@@ -110,6 +110,33 @@ func TestSessionRunQuit(t *testing.T) {
 	}
 }
 
+func TestSessionRunLargeInput(t *testing.T) {
+	params := types.AnalysisParam{
+		Perspective:  "Detect anomalies",
+		TargetFields: []string{"user"},
+	}
+	paramsJSON, _ := json.Marshal(params)
+
+	client := &mockClient{
+		responses: []string{string(paramsJSON)},
+	}
+
+	// Generate input larger than default 64KB scanner buffer
+	largeInput := strings.Repeat("a", 100*1024) + "\n\n"
+	stdin := strings.NewReader(largeInput)
+	stdout := &bytes.Buffer{}
+	stderr := &bytes.Buffer{}
+
+	session := NewSession(client, stdin, stdout, stderr)
+	result, err := session.Run(context.Background())
+	if err != nil {
+		t.Fatalf("Run with large input: %v", err)
+	}
+	if result.Perspective != "Detect anomalies" {
+		t.Errorf("Perspective = %q, want %q", result.Perspective, "Detect anomalies")
+	}
+}
+
 func TestParseParams(t *testing.T) {
 	input := `{"perspective":"test","target_fields":["a","b"],"attention_points":["c"],"user_findings":[]}`
 	params, err := parseParams(input)
