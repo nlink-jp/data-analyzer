@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.7] - 2026-04-15
+
+### Changed
+- **Description in reports is no longer truncated** — shows full text in both
+  overview table and detail sections. CJK text was being garbled by byte-based
+  truncation.
+- **Evidence always shows full original record** — citation verification now
+  checks if LLM excerpt values exist in the original record (relevance check).
+  Relevant excerpts are replaced with the complete original. Irrelevant excerpts
+  (hallucination) trigger a warning and are still replaced with the original
+  for the user to judge.
+
 ## [0.1.6] - 2026-04-15
 
 ### Fixed

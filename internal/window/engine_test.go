@@ -1,10 +1,12 @@
 package window
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 
 	"github.com/nlink-jp/data-analyzer/internal/job"
@@ -173,11 +175,13 @@ func TestParseWindowResponseInvalidSeverity(t *testing.T) {
 	}
 }
 
-func TestVerifyCitationsCorrectExcerpt(t *testing.T) {
+func TestVerifyCitationsRelevantExcerptReplacedWithOriginal(t *testing.T) {
+	original := `{"user":"alice","action":"login","ip":"10.0.0.1"}`
 	recordMap := map[int]*types.Record{
-		5: {Index: 5, Source: "test.jsonl", RawJSON: json.RawMessage(`{"user":"alice","action":"login"}`)},
+		5: {Index: 5, Source: "test.jsonl", RawJSON: json.RawMessage(original)},
 	}
 
+	// Partial excerpt with values that exist in original → relevant, replaced with full record
 	findings := []types.Finding{
 		{
 			ID: "F-001",
@@ -187,42 +191,62 @@ func TestVerifyCitationsCorrectExcerpt(t *testing.T) {
 		},
 	}
 
-	corrections := verifyCitations(findings, recordMap, io.Discard)
-	if corrections != 0 {
-		t.Errorf("expected 0 corrections, got %d", corrections)
-	}
-	if len(findings[0].Citations) != 1 {
-		t.Errorf("expected 1 citation, got %d", len(findings[0].Citations))
+	verifyCitations(findings, recordMap, io.Discard)
+
+	if string(findings[0].Citations[0].Excerpt) != original {
+		t.Errorf("excerpt = %s, want full original %s", findings[0].Citations[0].Excerpt, original)
 	}
 }
 
-func TestVerifyCitationsMismatchedExcerpt(t *testing.T) {
+func TestVerifyCitationsHallucinatedExcerptWarns(t *testing.T) {
+	original := `{"user":"alice","action":"login"}`
 	recordMap := map[int]*types.Record{
-		5: {Index: 5, Source: "test.jsonl", RawJSON: json.RawMessage(`{"user":"alice","action":"login"}`)},
+		5: {Index: 5, Source: "test.jsonl", RawJSON: json.RawMessage(original)},
 	}
 
+	// Excerpt with values NOT in original → hallucination warning but still replaced
 	findings := []types.Finding{
 		{
 			ID: "F-001",
 			Citations: []types.Citation{
-				{RecordIndex: 5, Source: "test.jsonl", Excerpt: json.RawMessage(`{"user":"bob"}`)},
+				{RecordIndex: 5, Source: "test.jsonl", Excerpt: json.RawMessage(`{"user":"evil_hacker","action":"delete_all"}`)},
 			},
 		},
 	}
 
-	corrections := verifyCitations(findings, recordMap, io.Discard)
-	if corrections != 1 {
-		t.Errorf("expected 1 correction, got %d", corrections)
+	var stderr bytes.Buffer
+	verifyCitations(findings, recordMap, &stderr)
+
+	if !strings.Contains(stderr.String(), "possible hallucination") {
+		t.Error("expected hallucination warning")
+	}
+	// Should still include with full original for user to judge
+	if string(findings[0].Citations[0].Excerpt) != original {
+		t.Errorf("excerpt should be replaced with original even on hallucination")
+	}
+}
+
+func TestIsExcerptRelevant(t *testing.T) {
+	original := `{"user":"alice","action":"login","ts":"2026-04-15"}`
+	tests := []struct {
+		name    string
+		excerpt string
+		want    bool
+	}{
+		{"matching value", `{"user":"alice"}`, true},
+		{"no match", `{"user":"evil"}`, false},
+		{"null", `null`, false},
+		{"empty", ``, false},
+		{"partial match", `{"user":"alice","role":"admin"}`, true}, // alice matches
 	}
 
-	// Excerpt should be replaced with full original record
-	var excerpt map[string]any
-	json.Unmarshal(findings[0].Citations[0].Excerpt, &excerpt)
-	if excerpt["user"] != "alice" {
-		t.Errorf("corrected user = %v, want alice", excerpt["user"])
-	}
-	if excerpt["action"] != "login" {
-		t.Errorf("corrected should contain full original record, missing action field")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isExcerptRelevant(json.RawMessage(tt.excerpt), original)
+			if got != tt.want {
+				t.Errorf("isExcerptRelevant(%s) = %v, want %v", tt.excerpt, got, tt.want)
+			}
+		})
 	}
 }
 
@@ -326,8 +350,9 @@ func TestVerifyCitationsMultipleMixed(t *testing.T) {
 	}
 
 	corrections := verifyCitations(findings, recordMap, io.Discard)
-	if corrections != 2 {
-		t.Errorf("expected 2 corrections, got %d", corrections)
+	// 3 corrections: record 1 replaced with original, record 2 hallucination+replaced, record 100 removed
+	if corrections != 3 {
+		t.Errorf("expected 3 corrections, got %d", corrections)
 	}
 	if len(findings[0].Citations) != 2 {
 		t.Errorf("expected 2 valid citations, got %d", len(findings[0].Citations))

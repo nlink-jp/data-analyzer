@@ -213,21 +213,21 @@ func TestConvertBold(t *testing.T) {
 	}
 }
 
-func TestTruncate(t *testing.T) {
+func TestEscapeTableCell(t *testing.T) {
 	tests := []struct {
 		input string
-		max   int
 		want  string
 	}{
-		{"short", 10, "short"},
-		{"this is a long string", 10, "this is a…"},
-		{"newline\nin text", 20, "newline in text"},
+		{"short", "short"},
+		{"has|pipe", `has\|pipe`},
+		{"has\nnewline", "has newline"},
+		{"日本語の説明文", "日本語の説明文"},
 	}
 
 	for _, tt := range tests {
-		got := truncate(tt.input, tt.max)
+		got := escapeTableCell(tt.input)
 		if got != tt.want {
-			t.Errorf("truncate(%q, %d) = %q, want %q", tt.input, tt.max, got, tt.want)
+			t.Errorf("escapeTableCell(%q) = %q, want %q", tt.input, got, tt.want)
 		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"io"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/nlink-jp/data-analyzer/internal/job"
@@ -320,51 +321,25 @@ func verifyCitations(findings []types.Finding, recordMap map[int]*types.Record, 
 				continue
 			}
 
-			// Parse original record and excerpt
-			var original map[string]any
-			if err := json.Unmarshal(rec.RawJSON, &original); err != nil {
-				valid = append(valid, c)
-				continue
-			}
+			// Check if LLM excerpt values exist in the original record
+			origStr := string(rec.RawJSON)
+			excerptRelevant := isExcerptRelevant(c.Excerpt, origStr)
 
-			var excerpt map[string]any
-			if err := json.Unmarshal(c.Excerpt, &excerpt); err != nil {
-				// Excerpt is not a JSON object — replace with relevant fields from original
-				corrected, _ := json.Marshal(original)
-				c.Excerpt = corrected
+			if excerptRelevant {
+				// Excerpt references real data — replace with full original
+				c.Excerpt = rec.RawJSON
+				c.Source = rec.Source
+				valid = append(valid, c)
+				corrections++ // always replace to get full record
+			} else {
+				// Excerpt values not found in original — likely hallucinated
+				fmt.Fprintf(w, "  [citation-verify] WARNING: %s Record #%d — excerpt does not match original, possible hallucination\n", f.ID, c.RecordIndex)
+				// Still include with full original so the user can judge
+				c.Excerpt = rec.RawJSON
 				c.Source = rec.Source
 				valid = append(valid, c)
 				corrections++
-				fmt.Fprintf(w, "  [citation-verify] %s: Record #%d excerpt malformed — replaced with original\n", f.ID, c.RecordIndex)
-				continue
 			}
-
-			// Verify each field in excerpt exists and matches original
-			mismatched := false
-			for key, val := range excerpt {
-				origVal, exists := original[key]
-				if !exists {
-					mismatched = true
-					break
-				}
-				// Compare JSON representations for type-safe comparison
-				excerptJSON, _ := json.Marshal(val)
-				origJSON, _ := json.Marshal(origVal)
-				if string(excerptJSON) != string(origJSON) {
-					mismatched = true
-					break
-				}
-			}
-
-			if mismatched {
-				// Replace excerpt with the full original record
-				fmt.Fprintf(w, "  [citation-verify] %s: Record #%d excerpt mismatch — replaced with original\n", f.ID, c.RecordIndex)
-				c.Excerpt = rec.RawJSON
-				corrections++
-			}
-
-			c.Source = rec.Source
-			valid = append(valid, c)
 		}
 
 		f.Citations = valid
@@ -383,6 +358,38 @@ func verifyCitations(findings []types.Finding, recordMap map[int]*types.Record, 
 	}
 
 	return corrections
+}
+
+// isExcerptRelevant checks whether the LLM-generated excerpt contains values
+// that actually exist in the original record string. If at least one non-trivial
+// value from the excerpt is found in the original, the citation is considered valid.
+func isExcerptRelevant(excerpt json.RawMessage, original string) bool {
+	if len(excerpt) == 0 || string(excerpt) == "null" {
+		return false
+	}
+
+	// Try to parse excerpt as JSON object
+	var excerptMap map[string]any
+	if err := json.Unmarshal(excerpt, &excerptMap); err != nil {
+		// Not a JSON object — check if raw text appears in original
+		return strings.Contains(original, strings.TrimSpace(string(excerpt)))
+	}
+
+	// Check if any value from the excerpt appears in the original
+	matchCount := 0
+	for _, val := range excerptMap {
+		valStr := fmt.Sprintf("%v", val)
+		// Skip trivial values
+		if valStr == "" || valStr == "0" || valStr == "true" || valStr == "false" {
+			continue
+		}
+		if strings.Contains(original, valStr) {
+			matchCount++
+		}
+	}
+
+	// At least one non-trivial value must match
+	return matchCount > 0
 }
 
 var reRecordRef = regexp.MustCompile(`(?i)Record\s*#?(\d+)`)

@@ -55,7 +55,7 @@ func HTML(w io.Writer, result *types.AnalysisResult) error {
 		fmt.Fprint(w, `<table><thead><tr><th>ID</th><th>Severity</th><th>Description</th></tr></thead><tbody>`)
 		for _, f := range result.Findings {
 			fmt.Fprintf(w, `<tr><td><a href="#%s">%s</a></td><td><span class="badge %s">%s</span></td><td>%s</td></tr>`,
-				f.ID, f.ID, f.Severity, strings.ToUpper(f.Severity), esc(truncate(f.Description, 100)))
+				f.ID, f.ID, f.Severity, strings.ToUpper(f.Severity), esc(f.Description))
 		}
 		fmt.Fprint(w, `</tbody></table>`)
 

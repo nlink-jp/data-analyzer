@@ -36,7 +36,7 @@ func Markdown(w io.Writer, result *types.AnalysisResult) error {
 		fmt.Fprintf(w, "| ID | Severity | Description |\n")
 		fmt.Fprintf(w, "|---|---|---|\n")
 		for _, f := range result.Findings {
-			desc := truncate(f.Description, 80)
+			desc := escapeTableCell(f.Description)
 			fmt.Fprintf(w, "| %s | %s | %s |\n", f.ID, severityBadge(f.Severity), desc)
 		}
 		fmt.Fprintln(w)
@@ -100,16 +100,10 @@ func countSeverities(findings []types.Finding) map[string]int {
 	return counts
 }
 
-func truncate(s string, maxRunes int) string {
-	// Replace newlines for table display
+func escapeTableCell(s string) string {
 	s = strings.ReplaceAll(s, "\n", " ")
-	// Escape pipe characters for Markdown table cells
 	s = strings.ReplaceAll(s, "|", "\\|")
-	runes := []rune(s)
-	if len(runes) <= maxRunes {
-		return s
-	}
-	return string(runes[:maxRunes-1]) + "…"
+	return s
 }
 
 func prettyJSON(raw json.RawMessage) (string, error) {
