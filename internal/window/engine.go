@@ -357,16 +357,9 @@ func verifyCitations(findings []types.Finding, recordMap map[int]*types.Record, 
 			}
 
 			if mismatched {
-				// Replace excerpt with actual fields that the LLM tried to cite
-				corrected := make(map[string]any)
-				for key := range excerpt {
-					if origVal, exists := original[key]; exists {
-						corrected[key] = origVal
-					}
-				}
-				correctedJSON, _ := json.Marshal(corrected)
-				fmt.Fprintf(w, "  [citation-verify] %s: Record #%d excerpt mismatch — corrected from original\n", f.ID, c.RecordIndex)
-				c.Excerpt = correctedJSON
+				// Replace excerpt with the full original record
+				fmt.Fprintf(w, "  [citation-verify] %s: Record #%d excerpt mismatch — replaced with original\n", f.ID, c.RecordIndex)
+				c.Excerpt = rec.RawJSON
 				corrections++
 			}
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.6] - 2026-04-15
+
+### Fixed
+- Citation evidence now shows the full original record instead of a partial
+  subset. Previously, mismatch correction only kept fields the LLM mentioned,
+  which could result in nearly empty excerpts when the LLM hallucinated
+  field names.
+
 ## [0.1.5] - 2026-04-15
 
 ### Fixed

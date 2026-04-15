@@ -215,11 +215,14 @@ func TestVerifyCitationsMismatchedExcerpt(t *testing.T) {
 		t.Errorf("expected 1 correction, got %d", corrections)
 	}
 
-	// Excerpt should be corrected to actual value
+	// Excerpt should be replaced with full original record
 	var excerpt map[string]any
 	json.Unmarshal(findings[0].Citations[0].Excerpt, &excerpt)
 	if excerpt["user"] != "alice" {
 		t.Errorf("corrected user = %v, want alice", excerpt["user"])
+	}
+	if excerpt["action"] != "login" {
+		t.Errorf("corrected should contain full original record, missing action field")
 	}
 }
 
@@ -330,10 +333,13 @@ func TestVerifyCitationsMultipleMixed(t *testing.T) {
 		t.Errorf("expected 2 valid citations, got %d", len(findings[0].Citations))
 	}
 
-	// Second citation should be corrected
+	// Second citation should be replaced with full original
 	var excerpt map[string]any
 	json.Unmarshal(findings[0].Citations[1].Excerpt, &excerpt)
 	if excerpt["x"] != float64(2) {
 		t.Errorf("corrected x = %v, want 2", excerpt["x"])
+	}
+	if findings[0].Citations[1].Source != "a.jsonl" {
+		t.Errorf("source = %q, want a.jsonl", findings[0].Citations[1].Source)
 	}
 }
