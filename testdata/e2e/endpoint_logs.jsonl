@@ -1,0 +1,50 @@
+{"timestamp":"2026-04-14T08:01:12Z","user":"tanaka","action":"login","source_ip":"192.168.10.15","device":"DESKTOP-TK01","result":"success"}
+{"timestamp":"2026-04-14T08:05:30Z","user":"suzuki","action":"login","source_ip":"192.168.10.22","device":"DESKTOP-SZ01","result":"success"}
+{"timestamp":"2026-04-14T08:10:45Z","user":"yamada","action":"login","source_ip":"192.168.10.33","device":"DESKTOP-YM01","result":"success"}
+{"timestamp":"2026-04-14T08:15:00Z","user":"tanaka","action":"file_access","source_ip":"192.168.10.15","device":"DESKTOP-TK01","path":"\\\\filesvr\\shared\\project\\budget.xlsx","result":"success"}
+{"timestamp":"2026-04-14T08:20:11Z","user":"suzuki","action":"app_launch","source_ip":"192.168.10.22","device":"DESKTOP-SZ01","app":"outlook.exe","result":"success"}
+{"timestamp":"2026-04-14T08:25:33Z","user":"yamada","action":"file_access","source_ip":"192.168.10.33","device":"DESKTOP-YM01","path":"\\\\filesvr\\shared\\hr\\salary_data.xlsx","result":"success"}
+{"timestamp":"2026-04-14T08:30:00Z","user":"tanaka","action":"web_access","source_ip":"192.168.10.15","device":"DESKTOP-TK01","url":"https://intranet.example.com/portal","result":"success"}
+{"timestamp":"2026-04-14T08:35:22Z","user":"admin_temp","action":"login","source_ip":"10.0.0.99","device":"UNKNOWN","result":"failure"}
+{"timestamp":"2026-04-14T08:35:45Z","user":"admin_temp","action":"login","source_ip":"10.0.0.99","device":"UNKNOWN","result":"failure"}
+{"timestamp":"2026-04-14T08:36:01Z","user":"admin_temp","action":"login","source_ip":"10.0.0.99","device":"UNKNOWN","result":"failure"}
+{"timestamp":"2026-04-14T08:36:15Z","user":"admin_temp","action":"login","source_ip":"10.0.0.99","device":"UNKNOWN","result":"failure"}
+{"timestamp":"2026-04-14T08:36:30Z","user":"admin_temp","action":"login","source_ip":"10.0.0.99","device":"UNKNOWN","result":"success"}
+{"timestamp":"2026-04-14T08:37:00Z","user":"admin_temp","action":"privilege_escalation","source_ip":"10.0.0.99","device":"UNKNOWN","target":"Domain Admins","result":"success"}
+{"timestamp":"2026-04-14T08:38:00Z","user":"admin_temp","action":"file_access","source_ip":"10.0.0.99","device":"UNKNOWN","path":"\\\\dc01\\SYSVOL\\policies","result":"success"}
+{"timestamp":"2026-04-14T08:39:00Z","user":"admin_temp","action":"file_access","source_ip":"10.0.0.99","device":"UNKNOWN","path":"\\\\dc01\\ADMIN$\\system32\\config\\SAM","result":"success"}
+{"timestamp":"2026-04-14T08:40:00Z","user":"suzuki","action":"email_send","source_ip":"192.168.10.22","device":"DESKTOP-SZ01","to":"external@partner.co.jp","attachment":"proposal.pdf","result":"success"}
+{"timestamp":"2026-04-14T08:45:00Z","user":"yamada","action":"usb_insert","source_ip":"192.168.10.33","device":"DESKTOP-YM01","usb_device":"SanDisk Ultra 64GB","result":"blocked"}
+{"timestamp":"2026-04-14T08:50:00Z","user":"tanaka","action":"file_access","source_ip":"192.168.10.15","device":"DESKTOP-TK01","path":"\\\\filesvr\\shared\\project\\roadmap.pptx","result":"success"}
+{"timestamp":"2026-04-14T09:00:00Z","user":"admin_temp","action":"account_create","source_ip":"10.0.0.99","device":"UNKNOWN","target_user":"svc_backup","target_group":"Backup Operators","result":"success"}
+{"timestamp":"2026-04-14T09:01:00Z","user":"admin_temp","action":"account_create","source_ip":"10.0.0.99","device":"UNKNOWN","target_user":"svc_remote","target_group":"Remote Desktop Users","result":"success"}
+{"timestamp":"2026-04-14T09:05:00Z","user":"suzuki","action":"web_access","source_ip":"192.168.10.22","device":"DESKTOP-SZ01","url":"https://www.google.com/search","result":"success"}
+{"timestamp":"2026-04-14T09:10:00Z","user":"tanaka","action":"print","source_ip":"192.168.10.15","device":"DESKTOP-TK01","printer":"3F-Color-01","document":"budget.xlsx","result":"success"}
+{"timestamp":"2026-04-14T09:15:00Z","user":"admin_temp","action":"rdp_session","source_ip":"10.0.0.99","device":"UNKNOWN","target":"192.168.10.50","target_name":"FILESRV01","result":"success"}
+{"timestamp":"2026-04-14T09:16:00Z","user":"admin_temp","action":"file_copy","source_ip":"10.0.0.99","device":"UNKNOWN","src":"\\\\FILESRV01\\confidential\\customer_db.sql","dst":"C:\\temp\\customer_db.sql","result":"success"}
+{"timestamp":"2026-04-14T09:17:00Z","user":"admin_temp","action":"file_copy","source_ip":"10.0.0.99","device":"UNKNOWN","src":"\\\\FILESRV01\\confidential\\contracts_2026.zip","dst":"C:\\temp\\contracts_2026.zip","result":"success"}
+{"timestamp":"2026-04-14T09:20:00Z","user":"yamada","action":"login","source_ip":"192.168.10.33","device":"DESKTOP-YM01","result":"success"}
+{"timestamp":"2026-04-14T09:25:00Z","user":"admin_temp","action":"web_access","source_ip":"10.0.0.99","device":"UNKNOWN","url":"https://mega.nz/upload","result":"success"}
+{"timestamp":"2026-04-14T09:26:00Z","user":"admin_temp","action":"network_upload","source_ip":"10.0.0.99","device":"UNKNOWN","dst_host":"mega.nz","bytes_sent":524288000,"result":"success"}
+{"timestamp":"2026-04-14T09:30:00Z","user":"tanaka","action":"logout","source_ip":"192.168.10.15","device":"DESKTOP-TK01","result":"success"}
+{"timestamp":"2026-04-14T09:35:00Z","user":"suzuki","action":"file_access","source_ip":"192.168.10.22","device":"DESKTOP-SZ01","path":"\\\\filesvr\\shared\\project\\specs.docx","result":"success"}
+{"timestamp":"2026-04-14T09:40:00Z","user":"admin_temp","action":"audit_log_clear","source_ip":"10.0.0.99","device":"UNKNOWN","target":"Security","result":"success"}
+{"timestamp":"2026-04-14T09:41:00Z","user":"admin_temp","action":"scheduled_task_create","source_ip":"10.0.0.99","device":"UNKNOWN","task_name":"SystemUpdate","command":"powershell -enc BASE64ENCODED","result":"success"}
+{"timestamp":"2026-04-14T09:45:00Z","user":"yamada","action":"email_send","source_ip":"192.168.10.33","device":"DESKTOP-YM01","to":"manager@example.com","attachment":"report.pdf","result":"success"}
+{"timestamp":"2026-04-14T09:50:00Z","user":"suzuki","action":"logout","source_ip":"192.168.10.22","device":"DESKTOP-SZ01","result":"success"}
+{"timestamp":"2026-04-14T09:55:00Z","user":"admin_temp","action":"account_modify","source_ip":"10.0.0.99","device":"UNKNOWN","target_user":"svc_backup","change":"password_reset","result":"success"}
+{"timestamp":"2026-04-14T10:00:00Z","user":"tanaka","action":"login","source_ip":"192.168.10.15","device":"DESKTOP-TK01","result":"success"}
+{"timestamp":"2026-04-14T10:05:00Z","user":"tanaka","action":"app_launch","source_ip":"192.168.10.15","device":"DESKTOP-TK01","app":"excel.exe","result":"success"}
+{"timestamp":"2026-04-14T10:10:00Z","user":"admin_temp","action":"firewall_rule_add","source_ip":"10.0.0.99","device":"UNKNOWN","rule":"Allow-Inbound-4444","port":"4444","protocol":"TCP","result":"success"}
+{"timestamp":"2026-04-14T10:15:00Z","user":"yamada","action":"web_access","source_ip":"192.168.10.33","device":"DESKTOP-YM01","url":"https://teams.microsoft.com","result":"success"}
+{"timestamp":"2026-04-14T10:20:00Z","user":"admin_temp","action":"service_install","source_ip":"10.0.0.99","device":"UNKNOWN","service_name":"WinUpdateSvc","binary":"C:\\Windows\\Temp\\svc.exe","result":"success"}
+{"timestamp":"2026-04-14T10:25:00Z","user":"tanaka","action":"file_access","source_ip":"192.168.10.15","device":"DESKTOP-TK01","path":"\\\\filesvr\\shared\\project\\timeline.xlsx","result":"success"}
+{"timestamp":"2026-04-14T10:30:00Z","user":"admin_temp","action":"rdp_session","source_ip":"10.0.0.99","device":"UNKNOWN","target":"192.168.10.55","target_name":"DBSRV01","result":"success"}
+{"timestamp":"2026-04-14T10:31:00Z","user":"admin_temp","action":"db_query","source_ip":"10.0.0.99","device":"UNKNOWN","database":"customer_master","query":"SELECT * FROM users","rows_returned":15000,"result":"success"}
+{"timestamp":"2026-04-14T10:32:00Z","user":"admin_temp","action":"db_export","source_ip":"10.0.0.99","device":"UNKNOWN","database":"customer_master","table":"users","format":"csv","rows":15000,"result":"success"}
+{"timestamp":"2026-04-14T10:35:00Z","user":"yamada","action":"logout","source_ip":"192.168.10.33","device":"DESKTOP-YM01","result":"success"}
+{"timestamp":"2026-04-14T10:40:00Z","user":"tanaka","action":"email_send","source_ip":"192.168.10.15","device":"DESKTOP-TK01","to":"team@example.com","attachment":"timeline.xlsx","result":"success"}
+{"timestamp":"2026-04-14T10:45:00Z","user":"admin_temp","action":"network_upload","source_ip":"10.0.0.99","device":"UNKNOWN","dst_host":"transfer.sh","bytes_sent":104857600,"result":"success"}
+{"timestamp":"2026-04-14T10:50:00Z","user":"admin_temp","action":"account_delete","source_ip":"10.0.0.99","device":"UNKNOWN","target_user":"svc_remote","result":"success"}
+{"timestamp":"2026-04-14T10:55:00Z","user":"admin_temp","action":"logout","source_ip":"10.0.0.99","device":"UNKNOWN","result":"success"}
+{"timestamp":"2026-04-14T11:00:00Z","user":"tanaka","action":"logout","source_ip":"192.168.10.15","device":"DESKTOP-TK01","result":"success"}

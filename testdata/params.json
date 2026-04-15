@@ -1,0 +1,10 @@
+{
+  "perspective": "Detect suspicious user activities including privilege escalation, unauthorized file access, and unusual login patterns",
+  "target_fields": ["user", "action", "source_ip", "timestamp"],
+  "attention_points": [
+    "Access to sensitive files like /etc/passwd or /etc/shadow",
+    "Privilege escalation via sudo",
+    "Multiple failed login attempts"
+  ],
+  "user_findings": []
+}

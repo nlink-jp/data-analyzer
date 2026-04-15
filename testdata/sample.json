@@ -1,0 +1,4 @@
+[
+  {"timestamp":"2026-04-15T09:00:00Z","user":"charlie","action":"login","source_ip":"10.0.0.5"},
+  {"timestamp":"2026-04-15T09:30:00Z","user":"charlie","action":"download","file":"report.xlsx","source_ip":"10.0.0.5"}
+]

@@ -1,0 +1,15 @@
+{
+  "perspective": "Detect insider threat and unauthorized access patterns. Look for brute-force login attempts, privilege escalation, lateral movement, data exfiltration, persistence mechanisms, and anti-forensics activities. Distinguish between normal business operations and suspicious activities.",
+  "target_fields": ["user", "action", "source_ip", "device", "result", "timestamp"],
+  "attention_points": [
+    "Multiple failed login attempts followed by success",
+    "Privilege escalation to admin groups",
+    "Access to sensitive files (SAM, SYSVOL, confidential data)",
+    "Large data transfers to external services",
+    "Audit log clearing",
+    "Creation of scheduled tasks or services",
+    "Firewall rule modifications",
+    "Account creation and deletion patterns"
+  ],
+  "user_findings": []
+}

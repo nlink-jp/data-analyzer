@@ -1,0 +1,5 @@
+{"timestamp":"2026-04-15T10:00:00Z","user":"alice","action":"login","source_ip":"192.168.1.10"}
+{"timestamp":"2026-04-15T10:05:00Z","user":"bob","action":"login","source_ip":"192.168.1.20"}
+{"timestamp":"2026-04-15T10:10:00Z","user":"alice","action":"file_access","path":"/etc/passwd","source_ip":"192.168.1.10"}
+{"timestamp":"2026-04-15T10:15:00Z","user":"alice","action":"sudo","command":"cat /etc/shadow","source_ip":"192.168.1.10"}
+{"timestamp":"2026-04-15T10:20:00Z","user":"bob","action":"logout","source_ip":"192.168.1.20"}

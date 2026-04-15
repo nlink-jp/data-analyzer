@@ -1,0 +1,12 @@
+[api]
+endpoint = "http://localhost:1234/v1"
+model    = "google/gemma-4-26b-a4b"
+api_key  = ""
+
+[analysis]
+context_limit = 131072  # 128K tokens
+overlap_ratio = 0.1     # 10% overlap between windows
+max_findings  = 100
+
+[job]
+temp_dir = ""  # default: os.TempDir()/data-analyzer
