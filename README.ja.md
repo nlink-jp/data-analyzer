@@ -157,6 +157,19 @@ LLMからの全citationをオリジナルデータと照合：
 | 新RAWデータ | 残り（〜86K–106K） |
 | レスポンスバッファ | 〜5K（固定） |
 
+### 4. 古いジョブのクリーンアップ
+
+```bash
+# 7日以上前の完了済みジョブを削除（デフォルト）
+data-analyzer clean
+
+# 1日以上前の完了済みジョブを削除
+data-analyzer clean --max-age 1d
+
+# 全ジョブを削除（未完了含む）
+data-analyzer clean --all
+```
+
 ## ライセンス
 
 MIT

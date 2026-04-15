@@ -158,6 +158,19 @@ Every citation from the LLM is verified against the original data:
 | New RAW data | Remainder (~86K–106K) |
 | Response buffer | ~5K (fixed) |
 
+### 4. Clean up old jobs
+
+```bash
+# Remove completed jobs older than 7 days (default)
+data-analyzer clean
+
+# Remove completed jobs older than 1 day
+data-analyzer clean --max-age 1d
+
+# Remove all jobs (including incomplete)
+data-analyzer clean --all
+```
+
 ## License
 
 MIT

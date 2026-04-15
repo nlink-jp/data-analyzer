@@ -76,6 +76,7 @@ func TestEngineRunBasic(t *testing.T) {
 		ContextLimit: 131072,
 		OverlapRatio: 0.0,
 		MaxFindings:  100,
+		MemoryLimits: DefaultMemoryLimits(),
 		JobID:        jobID,
 		Params:       params,
 		Stderr:       io.Discard,

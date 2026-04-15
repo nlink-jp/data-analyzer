@@ -45,6 +45,7 @@ Subcommands:
 	cmd.AddCommand(newAnalyzeCmd())
 	cmd.AddCommand(newPrepareCmd())
 	cmd.AddCommand(newCompileCmd())
+	cmd.AddCommand(newCleanCmd())
 
 	return cmd
 }

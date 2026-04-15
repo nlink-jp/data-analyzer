@@ -15,6 +15,23 @@ type Config struct {
 	API      APIConfig      `toml:"api"`
 	Analysis AnalysisConfig `toml:"analysis"`
 	Job      JobConfig      `toml:"job"`
+	Tuning   TuningConfig   `toml:"tuning"`
+}
+
+// TuningConfig holds advanced tuning parameters for token estimation and memory layout.
+// Most users should not need to change these.
+type TuningConfig struct {
+	// Token estimation coefficients
+	CJKTokenRatio   float64 `toml:"cjk_token_ratio"`   // tokens per CJK character (default: 2.0)
+	ASCIITokenRatio float64 `toml:"ascii_token_ratio"`  // tokens per ASCII word (default: 1.3)
+	CharsPerToken   int     `toml:"chars_per_token"`    // chars per token for char-based estimate (default: 4)
+
+	// Memory map reserves (in tokens)
+	SystemReserve   int `toml:"system_reserve"`    // tokens reserved for system prompt (default: 2000)
+	ResponseReserve int `toml:"response_reserve"`  // tokens reserved for LLM response (default: 5000)
+	MaxSummary      int `toml:"max_summary"`       // max tokens for running summary (default: 15000)
+	MaxFindings     int `toml:"max_findings_budget"` // max tokens for findings in context (default: 20000)
+	MinRawData      int `toml:"min_raw_data"`      // minimum tokens for RAW data per window (default: 10000)
 }
 
 // APIConfig holds LLM API settings.
@@ -50,6 +67,16 @@ func Load(path string) (*Config, error) {
 			OverlapRatio:        0.1,
 			MaxFindings:         100,
 			MaxRecordsPerWindow: 200,
+		},
+		Tuning: TuningConfig{
+			CJKTokenRatio:   2.0,
+			ASCIITokenRatio: 1.3,
+			CharsPerToken:   4,
+			SystemReserve:   2000,
+			ResponseReserve: 5000,
+			MaxSummary:      15000,
+			MaxFindings:     20000,
+			MinRawData:      10000,
 		},
 	}
 

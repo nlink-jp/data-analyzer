@@ -12,3 +12,15 @@ lang                   = ""      # output language (e.g., "Japanese")
 
 [job]
 temp_dir = ""  # default: os.TempDir()/data-analyzer
+
+# Advanced tuning — most users should not need to change these.
+# Adjust when using a different LLM with different tokenization characteristics.
+# [tuning]
+# cjk_token_ratio   = 2.0    # tokens per CJK character
+# ascii_token_ratio  = 1.3    # tokens per ASCII word
+# chars_per_token    = 4      # chars per token (char-based estimate)
+# system_reserve     = 2000   # tokens reserved for system prompt
+# response_reserve   = 5000   # tokens reserved for LLM response
+# max_summary        = 15000  # max tokens for running summary
+# max_findings_budget = 20000 # max tokens for findings in context
+# min_raw_data       = 10000  # minimum tokens for RAW data per window

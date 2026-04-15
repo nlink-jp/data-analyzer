@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.0] - 2026-04-15
+
+### Added
+- `clean` subcommand to remove old job caches (`--max-age 7d`, `--all`)
+- `[tuning]` config section for token estimation coefficients and memory map
+  parameters, enabling adaptation to different LLMs without code changes
+- Debug logging of failed LLM responses (`--debug`) for troubleshooting
+  parse failures
+
+### Changed
+- Token estimator coefficients are now configurable via `[tuning]` in config.toml
+- Memory map reserves (system, response, summary, findings, raw data) are now
+  configurable via `[tuning]` in config.toml
+
 ## [0.1.9] - 2026-04-15
 
 ### Added

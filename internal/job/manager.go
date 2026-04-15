@@ -164,6 +164,87 @@ func (m *Manager) GetResult(jobID string) (*types.AnalysisResult, bool) {
 	return &result, true
 }
 
+// JobInfo describes a stored job.
+type JobInfo struct {
+	ID        string
+	Completed bool
+	CreatedAt time.Time
+	Size      int64 // total bytes on disk
+}
+
+// ListJobs returns all jobs in the base directory.
+func (m *Manager) ListJobs() ([]JobInfo, error) {
+	entries, err := os.ReadDir(m.baseDir)
+	if err != nil {
+		return nil, fmt.Errorf("reading job directory: %w", err)
+	}
+
+	var jobs []JobInfo
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+
+		jobID := e.Name()
+		_, completed := m.GetResult(jobID)
+
+		// Calculate total size
+		var size int64
+		jobDir := filepath.Join(m.baseDir, jobID)
+		filepath.WalkDir(jobDir, func(_ string, d os.DirEntry, _ error) error {
+			if d != nil && !d.IsDir() {
+				if fi, err := d.Info(); err == nil {
+					size += fi.Size()
+				}
+			}
+			return nil
+		})
+
+		jobs = append(jobs, JobInfo{
+			ID:        jobID,
+			Completed: completed,
+			CreatedAt: info.ModTime(),
+			Size:      size,
+		})
+	}
+
+	return jobs, nil
+}
+
+// RemoveJob deletes a job and all its checkpoints/results.
+func (m *Manager) RemoveJob(jobID string) error {
+	jobDir := filepath.Join(m.baseDir, jobID)
+	if _, err := os.Stat(jobDir); os.IsNotExist(err) {
+		return fmt.Errorf("job %s not found", jobID)
+	}
+	return os.RemoveAll(jobDir)
+}
+
+// CleanOldJobs removes completed jobs older than the given duration.
+// Returns the number of jobs removed.
+func (m *Manager) CleanOldJobs(maxAge time.Duration) (int, error) {
+	jobs, err := m.ListJobs()
+	if err != nil {
+		return 0, err
+	}
+
+	cutoff := time.Now().Add(-maxAge)
+	removed := 0
+	for _, j := range jobs {
+		if j.Completed && j.CreatedAt.Before(cutoff) {
+			if err := m.RemoveJob(j.ID); err == nil {
+				removed++
+			}
+		}
+	}
+
+	return removed, nil
+}
+
 func (m *Manager) generateID(params *types.AnalysisParam, inputs []string) string {
 	h := sha256.New()
 	data, _ := json.Marshal(params)

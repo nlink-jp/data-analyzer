@@ -3,13 +3,14 @@ package window
 import "testing"
 
 func TestComputeMemoryMapDefaults(t *testing.T) {
-	mm := ComputeMemoryMap(131072, 0, 0)
+	limits := DefaultMemoryLimits()
+	mm := ComputeMemoryMap(131072, 0, 0, limits)
 
-	if mm.SystemPrompt != systemReserve {
-		t.Errorf("SystemPrompt = %d, want %d", mm.SystemPrompt, systemReserve)
+	if mm.SystemPrompt != limits.SystemReserve {
+		t.Errorf("SystemPrompt = %d, want %d", mm.SystemPrompt, limits.SystemReserve)
 	}
-	if mm.ResponseBuffer != responseReserve {
-		t.Errorf("ResponseBuffer = %d, want %d", mm.ResponseBuffer, responseReserve)
+	if mm.ResponseBuffer != limits.ResponseReserve {
+		t.Errorf("ResponseBuffer = %d, want %d", mm.ResponseBuffer, limits.ResponseReserve)
 	}
 	if mm.PreviousSummary != 0 {
 		t.Errorf("PreviousSummary = %d, want 0", mm.PreviousSummary)
@@ -18,14 +19,15 @@ func TestComputeMemoryMapDefaults(t *testing.T) {
 		t.Errorf("Findings = %d, want 0", mm.Findings)
 	}
 
-	expectedRaw := 131072 - systemReserve - responseReserve
+	expectedRaw := 131072 - limits.SystemReserve - limits.ResponseReserve
 	if mm.RawData != expectedRaw {
 		t.Errorf("RawData = %d, want %d", mm.RawData, expectedRaw)
 	}
 }
 
 func TestComputeMemoryMapWithSummaryAndFindings(t *testing.T) {
-	mm := ComputeMemoryMap(131072, 10000, 15000)
+	limits := DefaultMemoryLimits()
+	mm := ComputeMemoryMap(131072, 10000, 15000, limits)
 
 	if mm.PreviousSummary != 10000 {
 		t.Errorf("PreviousSummary = %d, want 10000", mm.PreviousSummary)
@@ -34,43 +36,63 @@ func TestComputeMemoryMapWithSummaryAndFindings(t *testing.T) {
 		t.Errorf("Findings = %d, want 15000", mm.Findings)
 	}
 
-	expectedRaw := 131072 - systemReserve - responseReserve - 10000 - 15000
+	expectedRaw := 131072 - limits.SystemReserve - limits.ResponseReserve - 10000 - 15000
 	if mm.RawData != expectedRaw {
 		t.Errorf("RawData = %d, want %d", mm.RawData, expectedRaw)
 	}
 }
 
 func TestComputeMemoryMapCapsSummary(t *testing.T) {
-	mm := ComputeMemoryMap(131072, 50000, 0)
+	limits := DefaultMemoryLimits()
+	mm := ComputeMemoryMap(131072, 50000, 0, limits)
 
-	if mm.PreviousSummary != maxSummary {
-		t.Errorf("PreviousSummary = %d, want %d (capped)", mm.PreviousSummary, maxSummary)
+	if mm.PreviousSummary != limits.MaxSummary {
+		t.Errorf("PreviousSummary = %d, want %d (capped)", mm.PreviousSummary, limits.MaxSummary)
 	}
 }
 
 func TestComputeMemoryMapCapsFindings(t *testing.T) {
-	mm := ComputeMemoryMap(131072, 0, 50000)
+	limits := DefaultMemoryLimits()
+	mm := ComputeMemoryMap(131072, 0, 50000, limits)
 
-	if mm.Findings != maxFindingsBudget {
-		t.Errorf("Findings = %d, want %d (capped)", mm.Findings, maxFindingsBudget)
+	if mm.Findings != limits.MaxFindings {
+		t.Errorf("Findings = %d, want %d (capped)", mm.Findings, limits.MaxFindings)
 	}
 }
 
 func TestComputeMemoryMapReducesFindingsWhenTight(t *testing.T) {
-	// contextLimit=50000, available=50000-2000-5000=43000
-	// summary=15000 (capped at 15000), findings=20000
-	// rawData = 43000-15000-20000 = 8000 < 10000
-	// → findings reduced to 43000-15000-10000 = 18000, rawData = 10000
-	mm := ComputeMemoryMap(50000, 15000, 20000)
+	limits := DefaultMemoryLimits()
+	mm := ComputeMemoryMap(50000, 15000, 20000, limits)
 
-	if mm.RawData < minRawData {
-		t.Errorf("RawData = %d, should be >= %d", mm.RawData, minRawData)
+	if mm.RawData < limits.MinRawData {
+		t.Errorf("RawData = %d, should be >= %d", mm.RawData, limits.MinRawData)
 	}
-	if mm.PreviousSummary != maxSummary {
-		t.Errorf("PreviousSummary = %d, want %d", mm.PreviousSummary, maxSummary)
+	if mm.PreviousSummary != limits.MaxSummary {
+		t.Errorf("PreviousSummary = %d, want %d", mm.PreviousSummary, limits.MaxSummary)
 	}
-	// Findings should be reduced from 20000
 	if mm.Findings >= 20000 {
 		t.Errorf("Findings = %d, should be reduced", mm.Findings)
+	}
+}
+
+func TestComputeMemoryMapCustomLimits(t *testing.T) {
+	limits := MemoryLimits{
+		SystemReserve:   1000,
+		ResponseReserve: 3000,
+		MaxSummary:      5000,
+		MaxFindings:     8000,
+		MinRawData:      5000,
+	}
+	mm := ComputeMemoryMap(30000, 3000, 5000, limits)
+
+	if mm.SystemPrompt != 1000 {
+		t.Errorf("SystemPrompt = %d, want 1000", mm.SystemPrompt)
+	}
+	if mm.ResponseBuffer != 3000 {
+		t.Errorf("ResponseBuffer = %d, want 3000", mm.ResponseBuffer)
+	}
+	expectedRaw := 30000 - 1000 - 3000 - 3000 - 5000
+	if mm.RawData != expectedRaw {
+		t.Errorf("RawData = %d, want %d", mm.RawData, expectedRaw)
 	}
 }

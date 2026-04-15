@@ -6,17 +6,48 @@ import (
 	"unicode/utf8"
 )
 
+// Coefficients holds the tunable parameters for token estimation.
+type Coefficients struct {
+	CJKRatio      float64 // tokens per CJK character (default: 2.0)
+	ASCIIRatio    float64 // tokens per ASCII word (default: 1.3)
+	CharsPerToken int     // chars per token for char-based estimate (default: 4)
+}
+
+// DefaultCoefficients returns the default estimation coefficients.
+func DefaultCoefficients() Coefficients {
+	return Coefficients{
+		CJKRatio:      2.0,
+		ASCIIRatio:    1.3,
+		CharsPerToken: 4,
+	}
+}
+
+var globalCoefficients = DefaultCoefficients()
+
+// SetCoefficients updates the global estimation coefficients.
+func SetCoefficients(c Coefficients) {
+	if c.CJKRatio > 0 {
+		globalCoefficients.CJKRatio = c.CJKRatio
+	}
+	if c.ASCIIRatio > 0 {
+		globalCoefficients.ASCIIRatio = c.ASCIIRatio
+	}
+	if c.CharsPerToken > 0 {
+		globalCoefficients.CharsPerToken = c.CharsPerToken
+	}
+}
+
 // Estimate returns a conservative token-count estimate for mixed
 // Japanese/English text.
-//
-// Coefficients:
-//   - CJK characters (Kanji, Hiragana, Katakana, etc.): 1 char ≈ 2 tokens
-//   - ASCII/Latin words: 1 word ≈ 1.3 tokens
-//   - Punctuation/symbols: 1 char ≈ 1 token (important for JSON structure)
 //
 // Uses the higher of word-based and char-based estimates to avoid
 // undercount on structured data like JSON.
 func Estimate(text string) int {
+	return EstimateWith(text, globalCoefficients)
+}
+
+// EstimateWith returns a token estimate using the given coefficients.
+func EstimateWith(text string, c Coefficients) int {
 	var cjkChars, asciiWords, punctChars int
 	inWord := false
 
@@ -41,14 +72,17 @@ func Estimate(text string) int {
 	}
 
 	// Word-based estimate (good for prose)
-	wordBased := cjkChars*2 + int(float64(asciiWords)*1.3+0.5) + punctChars
+	wordBased := int(float64(cjkChars)*c.CJKRatio+0.5) +
+		int(float64(asciiWords)*c.ASCIIRatio+0.5) +
+		punctChars
 
 	// Char-based estimate (good for JSON/structured data)
-	// ~4 chars per token for ASCII, ~2 chars per token for CJK
-	totalChars := len(text)
-	charBased := (totalChars + 3) / 4 // conservative: 1 token per 4 chars
+	cpt := c.CharsPerToken
+	if cpt <= 0 {
+		cpt = 4
+	}
+	charBased := (len(text) + cpt - 1) / cpt
 
-	// Use the higher estimate to avoid undercount
 	if charBased > wordBased {
 		return charBased
 	}

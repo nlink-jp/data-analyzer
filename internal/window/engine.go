@@ -25,6 +25,7 @@ type EngineConfig struct {
 	OverlapRatio        float64
 	MaxFindings         int
 	MaxRecordsPerWindow int
+	MemoryLimits        MemoryLimits
 	JobID               string
 	Params              *types.AnalysisParam
 	Stderr              io.Writer
@@ -105,7 +106,7 @@ func (e *Engine) Run(ctx context.Context, records []types.Record, state *types.W
 		summaryTokens := token.Estimate(summary)
 		findingsJSON, _ := json.Marshal(findings)
 		findingsTokens := token.Estimate(string(findingsJSON))
-		mm := ComputeMemoryMap(e.cfg.ContextLimit, summaryTokens, findingsTokens)
+		mm := ComputeMemoryMap(e.cfg.ContextLimit, summaryTokens, findingsTokens, e.cfg.MemoryLimits)
 
 		// Determine records for this window
 		remaining := records[recordOffset:]
@@ -155,6 +156,10 @@ func (e *Engine) Run(ctx context.Context, records []types.Record, state *types.W
 				fmt.Fprintf(e.cfg.Stderr, "\nWarning: failed to parse window %d response, retrying: %v\n", windowIndex, err)
 			} else {
 				fmt.Fprintf(e.cfg.Stderr, "\nWarning: failed to parse window %d response after retry, skipping: %v\n", windowIndex, err)
+			}
+			if e.cfg.Debug {
+				fmt.Fprintf(e.cfg.Stderr, "[debug] failed response (attempt %d, %d chars):\n%s\n---\n",
+					attempt+1, len(response), response)
 			}
 		}
 		if windowResp == nil {

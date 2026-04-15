@@ -14,6 +14,7 @@ import (
 	"github.com/nlink-jp/data-analyzer/internal/llm"
 	"github.com/nlink-jp/data-analyzer/internal/prompt"
 	"github.com/nlink-jp/data-analyzer/internal/reader"
+	"github.com/nlink-jp/data-analyzer/internal/token"
 	"github.com/nlink-jp/data-analyzer/internal/types"
 	"github.com/nlink-jp/data-analyzer/internal/window"
 	"github.com/spf13/cobra"
@@ -57,6 +58,13 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		return exitWithCode(fmt.Errorf("config: %w", err), exitInputError)
 	}
 	cfg.ApplyFlags(flagModel)
+
+	// Apply tuning coefficients for token estimation
+	token.SetCoefficients(token.Coefficients{
+		CJKRatio:      cfg.Tuning.CJKTokenRatio,
+		ASCIIRatio:    cfg.Tuning.ASCIITokenRatio,
+		CharsPerToken: cfg.Tuning.CharsPerToken,
+	})
 
 	// 2. Load analysis parameters
 	params, err := loadParams(flagParams)
@@ -117,10 +125,17 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		OverlapRatio:        cfg.Analysis.OverlapRatio,
 		MaxFindings:         cfg.Analysis.MaxFindings,
 		MaxRecordsPerWindow: cfg.Analysis.MaxRecordsPerWindow,
-		JobID:               jobID,
-		Params:              params,
-		Stderr:              os.Stderr,
-		Debug:               flagDebug,
+		MemoryLimits: window.MemoryLimits{
+			SystemReserve:   cfg.Tuning.SystemReserve,
+			ResponseReserve: cfg.Tuning.ResponseReserve,
+			MaxSummary:      cfg.Tuning.MaxSummary,
+			MaxFindings:     cfg.Tuning.MaxFindings,
+			MinRawData:      cfg.Tuning.MinRawData,
+		},
+		JobID:  jobID,
+		Params: params,
+		Stderr: os.Stderr,
+		Debug:  flagDebug,
 	})
 
 	result, err := engine.Run(ctx, records, state)
