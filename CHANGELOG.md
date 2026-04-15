@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1] - 2026-04-15
+
+### Fixed
+- Scanner buffer overflow in `prepare` subcommand — long user input (>64KB) caused
+  silent truncation and unexpected behavior. Buffer increased to 1MB with proper
+  error checking.
+
 ## [0.1.0] - 2026-04-15
 
 ### Added
