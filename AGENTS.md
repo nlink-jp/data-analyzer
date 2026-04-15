@@ -83,6 +83,7 @@ Settings loaded: defaults → `~/.config/data-analyzer/config.toml` → env vars
 
 ## Gotchas
 
+- Findings sent to LLM are token-budget-trimmed (oldest excerpts stripped first); full findings preserved in checkpoints/output
 - LLM client uses net/http directly (no OpenAI SDK)
 - Local models emit thinking tags — nlk/strip removes them
 - Local models may emit malformed JSON — nlk/jsonfix repairs

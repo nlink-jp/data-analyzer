@@ -175,6 +175,39 @@ Later windows process fewer records per window, but this is acceptable because:
 - Patterns that span the dataset are already captured in earlier summaries.
 - The overlap ensures nothing falls through the cracks.
 
+### Findings Budget Enforcement
+
+The memory map allocates a token budget for findings (default: 20K tokens), but
+the raw findings array — with full original records embedded as citation
+excerpts (see "Why Citation Verification") — can far exceed this budget as
+analysis progresses. Without enforcement, the actual prompt grows unbounded:
+
+```
+Budget says:  [2K system] [15K summary] [20K findings] [86K data] [5K response]
+Actual was:   [2K system] [15K summary] [80K findings] [26K data] [5K response]
+```
+
+This caused progressively longer LLM processing times and eventual timeouts in
+production — each window took longer to process as findings accumulated, even
+though the data payload shrank.
+
+**The fix:** Before building each window's prompt, the engine creates a
+**trimmed copy** of findings that fits within the allocated budget. Trimming
+strips citation excerpts from the oldest findings first, replacing them with
+`"[see original]"`. This preserves the finding's description, severity, ID,
+and record index — enough for the LLM to avoid duplicate discoveries — while
+dramatically reducing token consumption.
+
+The trimming is prompt-only: the **full findings with original excerpts are
+preserved** in checkpoints and the final output. No information is lost from
+the analysis result.
+
+Trimming strategy (oldest-first):
+1. Strip citation excerpts from the oldest findings, progressing toward newer
+2. If still over budget after stripping all excerpts, truncate descriptions
+3. Never remove findings entirely — the LLM needs the ID/description list to
+   avoid rediscovering the same patterns
+
 Note: the memory map operates alongside `max_records_per_window`. The actual
 window size is `min(token_budget_allows, max_records_per_window)`.
 

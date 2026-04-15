@@ -335,6 +335,81 @@ func TestRecoverCitationsFromText(t *testing.T) {
 	}
 }
 
+func TestTrimFindingsForBudgetNoTrimNeeded(t *testing.T) {
+	findings := []types.Finding{
+		{
+			ID:          "F-001",
+			Description: "small finding",
+			Severity:    "info",
+			Citations: []types.Citation{
+				{RecordIndex: 0, Source: "test.jsonl", Excerpt: json.RawMessage(`{"x":1}`)},
+			},
+		},
+	}
+
+	result := trimFindingsForBudget(findings, 100000)
+	if len(result) != 1 {
+		t.Fatalf("got %d findings, want 1", len(result))
+	}
+	// Excerpt should be unchanged
+	if string(result[0].Citations[0].Excerpt) != `{"x":1}` {
+		t.Errorf("excerpt was modified when it should not have been")
+	}
+}
+
+func TestTrimFindingsForBudgetStripsExcerpts(t *testing.T) {
+	// Create findings with large excerpts that will exceed a small budget
+	bigRecord := json.RawMessage(`{"data":"` + strings.Repeat("x", 2000) + `"}`)
+	findings := []types.Finding{
+		{
+			ID:          "F-001",
+			Description: "old finding",
+			Severity:    "high",
+			Citations: []types.Citation{
+				{RecordIndex: 0, Source: "a.jsonl", Excerpt: bigRecord},
+			},
+		},
+		{
+			ID:          "F-002",
+			Description: "newer finding",
+			Severity:    "medium",
+			Citations: []types.Citation{
+				{RecordIndex: 1, Source: "a.jsonl", Excerpt: bigRecord},
+			},
+		},
+	}
+
+	// Set budget small enough to require trimming
+	result := trimFindingsForBudget(findings, 500)
+
+	if len(result) != 2 {
+		t.Fatalf("got %d findings, want 2", len(result))
+	}
+
+	// Older finding (F-001) should have excerpt stripped
+	if string(result[0].Citations[0].Excerpt) != `"[see original]"` {
+		t.Errorf("old finding excerpt = %s, want placeholder", result[0].Citations[0].Excerpt)
+	}
+
+	// Original should be unmodified
+	if string(findings[0].Citations[0].Excerpt) != string(bigRecord) {
+		t.Error("original findings were modified")
+	}
+}
+
+func TestTrimFindingsForBudgetEmptyAndZero(t *testing.T) {
+	result := trimFindingsForBudget(nil, 1000)
+	if result != nil {
+		t.Error("expected nil for nil input")
+	}
+
+	findings := []types.Finding{{ID: "F-001"}}
+	result = trimFindingsForBudget(findings, 0)
+	if len(result) != 1 {
+		t.Fatalf("got %d, want 1 for zero budget", len(result))
+	}
+}
+
 func TestVerifyCitationsMultipleMixed(t *testing.T) {
 	recordMap := map[int]*types.Record{
 		1: {Index: 1, Source: "a.jsonl", RawJSON: json.RawMessage(`{"x":1}`)},

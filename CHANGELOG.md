@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.3.1] - 2026-04-16
+
+### Fixed
+- **Findings token budget not enforced in prompt** — as findings accumulated
+  with full original records as citation excerpts, the actual prompt size grew
+  far beyond the budgeted 20K tokens (up to 80K+), causing progressively longer
+  LLM processing times and eventual timeouts. The memory map calculated the
+  budget correctly but never truncated the findings sent to the LLM.
+- The engine now creates a trimmed copy of findings for each prompt, stripping
+  citation excerpts from the oldest findings first (`"[see original]"`). Full
+  findings with original excerpts are preserved in checkpoints and final output.
+- Debug logging now shows both raw and prompt-trimmed findings token counts.
+
 ## [0.3.0] - 2026-04-16
 
 ### Added

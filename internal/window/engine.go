@@ -120,8 +120,11 @@ func (e *Engine) Run(ctx context.Context, records []types.Record, state *types.W
 		}
 		windowRecords := remaining[:count]
 
+		// Trim findings to fit token budget before building prompt
+		promptFindings := trimFindingsForBudget(findings, mm.Findings)
+
 		// Build user prompt
-		userPrompt, err := e.builder.WindowPrompt(summary, findings, windowRecords, windowIndex)
+		userPrompt, err := e.builder.WindowPrompt(summary, promptFindings, windowRecords, windowIndex)
 		if err != nil {
 			return nil, fmt.Errorf("building prompt for window %d: %w", windowIndex, err)
 		}
@@ -136,8 +139,10 @@ func (e *Engine) Run(ctx context.Context, records []types.Record, state *types.W
 			windowIndex, recordOffset, endRecord-1, len(records), progress, count)
 
 		if e.cfg.Debug {
-			fmt.Fprintf(e.cfg.Stderr, "\n[debug] window=%d offset=%d count=%d budget=%d summary=%d findings=%d\n",
-				windowIndex, recordOffset, count, mm.RawData, summaryTokens, findingsTokens)
+			promptFindingsJSON, _ := json.Marshal(promptFindings)
+			promptFindingsTokens := token.Estimate(string(promptFindingsJSON))
+			fmt.Fprintf(e.cfg.Stderr, "\n[debug] window=%d offset=%d count=%d budget=%d summary=%d findings=%d (prompt=%d, budget=%d)\n",
+				windowIndex, recordOffset, count, mm.RawData, summaryTokens, findingsTokens, promptFindingsTokens, mm.Findings)
 		}
 
 		// Pre-flight: confirm model is loaded before calling LLM
@@ -283,6 +288,52 @@ func (e *Engine) evictFindings(findings []types.Finding) []types.Finding {
 	}
 
 	return append(high, other...)
+}
+
+// trimFindingsForBudget returns a copy of findings that fits within the given
+// token budget. When the full findings exceed the budget, older findings have
+// their citation excerpts replaced with a compact placeholder to reduce size.
+// The original findings slice is never modified.
+func trimFindingsForBudget(findings []types.Finding, budget int) []types.Finding {
+	if len(findings) == 0 || budget <= 0 {
+		return findings
+	}
+
+	fullJSON, _ := json.Marshal(findings)
+	if token.Estimate(string(fullJSON)) <= budget {
+		return findings
+	}
+
+	// Deep-copy and strip excerpts from oldest findings first
+	trimmed := make([]types.Finding, len(findings))
+	for i := range findings {
+		trimmed[i] = findings[i]
+		// Deep-copy citations so we don't modify the originals
+		trimmed[i].Citations = make([]types.Citation, len(findings[i].Citations))
+		copy(trimmed[i].Citations, findings[i].Citations)
+	}
+
+	placeholder := json.RawMessage(`"[see original]"`)
+
+	// Strip excerpts from oldest findings until we fit the budget
+	for i := 0; i < len(trimmed); i++ {
+		for j := range trimmed[i].Citations {
+			trimmed[i].Citations[j].Excerpt = placeholder
+		}
+		trimmedJSON, _ := json.Marshal(trimmed)
+		if token.Estimate(string(trimmedJSON)) <= budget {
+			return trimmed
+		}
+	}
+
+	// Still over budget after stripping all excerpts — also truncate descriptions
+	for i := 0; i < len(trimmed); i++ {
+		if len(trimmed[i].Description) > 100 {
+			trimmed[i].Description = trimmed[i].Description[:100] + "..."
+		}
+	}
+
+	return trimmed
 }
 
 func parseWindowResponse(text string, windowIndex int, counter *int, sourceIndex map[int]string) (*types.WindowResponse, error) {
