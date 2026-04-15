@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.8] - 2026-04-15
+
+### Fixed
+- Display Job ID at analysis start so users can identify which job to resume
+  after interruption.
+
 ## [0.1.7] - 2026-04-15
 
 ### Changed
