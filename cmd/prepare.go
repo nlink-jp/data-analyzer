@@ -44,7 +44,7 @@ func runPrepare(cmd *cobra.Command, args []string) error {
 	}
 	cfg.ApplyFlags(flagModel)
 
-	client := llm.NewHTTPClient(cfg.API.Endpoint, cfg.API.Model, cfg.API.APIKey)
+	client := llm.NewHTTPClient(cfg.API.Endpoint, cfg.API.Model, cfg.API.APIKey, llm.DefaultClientConfig())
 
 	session := prepare.NewSession(client, os.Stdin, os.Stdout, os.Stderr)
 

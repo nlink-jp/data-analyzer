@@ -13,6 +13,14 @@ lang                   = ""      # output language (e.g., "Japanese")
 [job]
 temp_dir = ""  # default: os.TempDir()/data-analyzer
 
+# Resilience — retry and health-check settings for LLM backend stability.
+# Useful when the backend may unload or crash the model during long analyses.
+# [resilience]
+# max_retries              = 10   # max retry attempts per LLM call
+# max_backoff_sec          = 120  # max backoff wait between retries (seconds)
+# health_check_interval_sec = 10  # polling interval for model readiness (seconds)
+# health_check_timeout_sec = 300  # max wait for model to become ready (seconds)
+
 # Advanced tuning — most users should not need to change these.
 # Adjust when using a different LLM with different tokenization characteristics.
 # [tuning]

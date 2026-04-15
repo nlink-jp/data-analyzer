@@ -29,6 +29,8 @@ func (m *mockClient) Chat(_ context.Context, _, _ string) (string, error) {
 	return resp, nil
 }
 
+func (m *mockClient) WaitForModel(_ context.Context) error { return nil }
+
 func makeRecords(n int) []types.Record {
 	records := make([]types.Record, n)
 	for i := range n {

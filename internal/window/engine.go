@@ -140,6 +140,11 @@ func (e *Engine) Run(ctx context.Context, records []types.Record, state *types.W
 				windowIndex, recordOffset, count, mm.RawData, summaryTokens, findingsTokens)
 		}
 
+		// Pre-flight: confirm model is loaded before calling LLM
+		if err := e.client.WaitForModel(ctx); err != nil {
+			return nil, fmt.Errorf("model health-check before window %d: %w", windowIndex, err)
+		}
+
 		// Call LLM (retry once on parse failure)
 		var windowResp *types.WindowResponse
 		for attempt := range 2 {
@@ -234,6 +239,10 @@ func (e *Engine) generateFinalReport(ctx context.Context, summary string, findin
 	system, user, err := e.builder.FinalPrompt(summary, findings)
 	if err != nil {
 		return "", err
+	}
+
+	if err := e.client.WaitForModel(ctx); err != nil {
+		return "", fmt.Errorf("model health-check before final report: %w", err)
 	}
 
 	response, err := e.client.Chat(ctx, system, user)

@@ -26,6 +26,8 @@ func (m *mockClient) Chat(_ context.Context, _, _ string) (string, error) {
 	return resp, nil
 }
 
+func (m *mockClient) WaitForModel(_ context.Context) error { return nil }
+
 func TestSessionRunAcceptFirst(t *testing.T) {
 	params := types.AnalysisParam{
 		Perspective:     "Detect suspicious login patterns",

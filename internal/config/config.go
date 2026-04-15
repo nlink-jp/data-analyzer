@@ -12,10 +12,19 @@ import (
 
 // Config holds all data-analyzer configuration.
 type Config struct {
-	API      APIConfig      `toml:"api"`
-	Analysis AnalysisConfig `toml:"analysis"`
-	Job      JobConfig      `toml:"job"`
-	Tuning   TuningConfig   `toml:"tuning"`
+	API        APIConfig        `toml:"api"`
+	Analysis   AnalysisConfig   `toml:"analysis"`
+	Job        JobConfig        `toml:"job"`
+	Tuning     TuningConfig     `toml:"tuning"`
+	Resilience ResilienceConfig `toml:"resilience"`
+}
+
+// ResilienceConfig holds retry and health-check settings for LLM backend resilience.
+type ResilienceConfig struct {
+	MaxRetries             int `toml:"max_retries"`               // max retry attempts per LLM call (default: 10)
+	MaxBackoffSec          int `toml:"max_backoff_sec"`            // max backoff duration in seconds (default: 120)
+	HealthCheckIntervalSec int `toml:"health_check_interval_sec"`  // polling interval for model readiness (default: 10)
+	HealthCheckTimeoutSec  int `toml:"health_check_timeout_sec"`   // max wait for model to become ready (default: 300)
 }
 
 // TuningConfig holds advanced tuning parameters for token estimation and memory layout.
@@ -77,6 +86,12 @@ func Load(path string) (*Config, error) {
 			MaxSummary:      15000,
 			MaxFindings:     20000,
 			MinRawData:      10000,
+		},
+		Resilience: ResilienceConfig{
+			MaxRetries:             10,
+			MaxBackoffSec:          120,
+			HealthCheckIntervalSec: 10,
+			HealthCheckTimeoutSec:  300,
 		},
 	}
 

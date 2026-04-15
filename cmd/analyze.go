@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/nlink-jp/data-analyzer/internal/config"
 	"github.com/nlink-jp/data-analyzer/internal/job"
@@ -111,7 +112,12 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	}
 
 	// 6. Create LLM client
-	client := llm.NewHTTPClient(cfg.API.Endpoint, cfg.API.Model, cfg.API.APIKey)
+	client := llm.NewHTTPClient(cfg.API.Endpoint, cfg.API.Model, cfg.API.APIKey, llm.ClientConfig{
+		MaxRetries:          cfg.Resilience.MaxRetries,
+		MaxBackoff:          time.Duration(cfg.Resilience.MaxBackoffSec) * time.Second,
+		HealthCheckInterval: time.Duration(cfg.Resilience.HealthCheckIntervalSec) * time.Second,
+		HealthCheckTimeout:  time.Duration(cfg.Resilience.HealthCheckTimeoutSec) * time.Second,
+	})
 
 	// 7. Create prompt builder
 	builder := prompt.NewBuilder(params)
