@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.1.2] - 2026-04-15
+
+### Fixed
+- Multi-line paste in `prepare` caused remaining lines to leak to the shell as
+  commands. Input now reads until an empty line instead of single-line mode.
+
+### Added
+- `prepare --input` flag to load initial requirements from a file, then enter
+  interactive refinement mode. Prevents terminal paste issues for long prompts.
+- Multi-line input support in interactive mode (end with empty line)
+
 ## [0.1.1] - 2026-04-15
 
 ### Fixed

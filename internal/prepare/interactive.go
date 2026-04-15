@@ -66,31 +66,45 @@ func NewSession(client llm.Client, stdin io.Reader, stdout, stderr io.Writer) *S
 // Run executes the interactive parameter building loop.
 // Returns the finalized AnalysisParam.
 func (s *Session) Run(ctx context.Context) (*types.AnalysisParam, error) {
+	return s.RunWithInput(ctx, "")
+}
+
+// RunWithInput executes the parameter building loop.
+// If initialInput is non-empty, it is used as the initial description
+// (skipping the interactive prompt), then enters the refine loop.
+func (s *Session) RunWithInput(ctx context.Context, initialInput string) (*types.AnalysisParam, error) {
 	scanner := bufio.NewScanner(s.stdin)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // up to 1MB per line
 
-	fmt.Fprintln(s.stdout, "=== data-analyzer: Analysis Parameter Builder ===")
-	fmt.Fprintln(s.stdout)
-	fmt.Fprintln(s.stdout, "Describe what you want to analyze. Include:")
-	fmt.Fprintln(s.stdout, "  - What kind of data you have (access logs, operation logs, etc.)")
-	fmt.Fprintln(s.stdout, "  - What you're looking for (anomalies, patterns, threats, etc.)")
-	fmt.Fprintln(s.stdout, "  - Any specific fields or indicators to focus on")
-	fmt.Fprintln(s.stdout)
-	fmt.Fprint(s.stdout, "> ")
+	var description string
 
-	// Step 1: Get initial description
-	if !scanner.Scan() {
-		if err := scanner.Err(); err != nil {
-			return nil, fmt.Errorf("reading input: %w", err)
+	if initialInput != "" {
+		// Use file input as description
+		description = strings.TrimSpace(initialInput)
+		fmt.Fprintln(s.stdout, "=== data-analyzer: Analysis Parameter Builder ===")
+		fmt.Fprintln(s.stdout)
+		fmt.Fprintf(s.stdout, "Loaded initial requirements (%d chars)\n", len(description))
+	} else {
+		// Interactive input
+		fmt.Fprintln(s.stdout, "=== data-analyzer: Analysis Parameter Builder ===")
+		fmt.Fprintln(s.stdout)
+		fmt.Fprintln(s.stdout, "Describe what you want to analyze.")
+		fmt.Fprintln(s.stdout, "You can paste multiple lines. End with an empty line.")
+		fmt.Fprintln(s.stdout)
+		fmt.Fprint(s.stdout, "> ")
+
+		var err error
+		description, err = readMultiLine(scanner)
+		if err != nil {
+			return nil, err
 		}
-		return nil, fmt.Errorf("no input received")
 	}
-	description := scanner.Text()
-	if strings.TrimSpace(description) == "" {
+
+	if description == "" {
 		return nil, fmt.Errorf("empty description")
 	}
 
-	// Step 2: Compile initial parameters
+	// Compile initial parameters
 	fmt.Fprintln(s.stderr, "Compiling analysis parameters...")
 
 	response, err := s.client.Chat(ctx, compileSystemPrompt, description)
@@ -113,13 +127,11 @@ func (s *Session) Run(ctx context.Context) (*types.AnalysisParam, error) {
 		fmt.Fprintln(s.stdout, "  'quit' to cancel")
 		fmt.Fprint(s.stdout, "> ")
 
-		if !scanner.Scan() {
-			if err := scanner.Err(); err != nil {
-				return nil, fmt.Errorf("reading input: %w", err)
-			}
-			break
+		input, err := readMultiLine(scanner)
+		if err != nil {
+			return nil, err
 		}
-		input := strings.TrimSpace(scanner.Text())
+		input = strings.TrimSpace(input)
 
 		if input == "" {
 			// Accept
@@ -151,6 +163,28 @@ func (s *Session) Run(ctx context.Context) (*types.AnalysisParam, error) {
 	}
 
 	return params, nil
+}
+
+// readMultiLine reads lines until an empty line or EOF.
+// Returns all lines joined with newlines.
+func readMultiLine(scanner *bufio.Scanner) (string, error) {
+	var lines []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" && len(lines) > 0 {
+			// Empty line after content → end of input
+			break
+		}
+		if line == "" && len(lines) == 0 {
+			// Leading empty line with no content → end (accept/enter)
+			return "", nil
+		}
+		lines = append(lines, line)
+	}
+	if err := scanner.Err(); err != nil {
+		return "", fmt.Errorf("reading input: %w", err)
+	}
+	return strings.Join(lines, "\n"), nil
 }
 
 func (s *Session) displayParams(params *types.AnalysisParam) {
