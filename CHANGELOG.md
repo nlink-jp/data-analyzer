@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.3.0] - 2026-04-16
+
+### Added
+- **LLM backend resilience** — automatic retry and health-check on model crash
+  or unload during long analysis sessions. The client detects crash errors
+  (e.g., `"The model has crashed"`), polls `/v1/models` until the model reloads,
+  then retries the request.
+- `[resilience]` config section with `max_retries` (default: 10),
+  `max_backoff_sec` (default: 120), `health_check_interval_sec` (default: 10),
+  and `health_check_timeout_sec` (default: 300).
+- Pre-flight model health check before each window and final report LLM call.
+- Model crash/unload error patterns (`crashed`, `model not found`, `unloaded`)
+  are now retryable regardless of HTTP status code.
+
+### Changed
+- Default max retries increased from 5 to 10.
+- Default max backoff increased from 30s to 120s.
+
 ## [0.2.0] - 2026-04-15
 
 ### Added

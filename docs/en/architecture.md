@@ -211,6 +211,69 @@ Language is configurable at three levels (highest priority wins):
 2. Parameter file: `"lang": "Japanese"` in params.json
 3. Config: `analysis.lang` in config.toml or `DATA_ANALYZER_LANG` env var
 
+## Why LLM Backend Resilience
+
+Long-running analyses (100K+ records) can take hours with a local LLM. During
+this time, the backend may crash or unload the model due to memory pressure,
+thermal throttling, or internal errors. In practice, we observed this failure
+mode at window 35 of a 17K-record analysis:
+
+```
+API returned 400: {"error":"The model has crashed without additional information. (Exit code: null)"}
+```
+
+Note the HTTP 400 status — this is not a client error but a backend crash
+reported through a non-standard status code. The original retry logic only
+retried on 429/500/503, so this caused an immediate abort, wasting 35 windows
+of prior computation.
+
+### Why Error Pattern Matching (Not Just Status Codes)
+
+Different backends report model crashes through different HTTP status codes.
+LM Studio uses 400, others may use 500 or 503. Relying solely on status codes
+misses legitimate retry opportunities. Instead, the client examines the error
+message for crash-indicating patterns (`crashed`, `model not found`, `unloaded`)
+and treats these as retryable regardless of the HTTP status code.
+
+### Why Health Check Before Retry
+
+After a model crash, the backend needs time to reload the model (typically
+30-120 seconds). Blindly retrying with exponential backoff wastes attempts —
+the model isn't ready yet, and each retry fails immediately. Instead, the
+client polls `/v1/models` to confirm the model appears in the model list
+before sending the next chat request. This ensures retries are only spent on
+requests that have a chance of succeeding.
+
+### Why Pre-flight Health Check
+
+In addition to post-failure health checks, the engine performs a pre-flight
+check before each window's LLM call. This catches cases where the model was
+unloaded between windows (e.g., by another user or a backend timeout) before
+sending a potentially large prompt that would fail immediately.
+
+**Why not just rely on Chat retry?**
+A pre-flight check is cheap (GET `/v1/models`) compared to constructing and
+sending a full analysis prompt. If the model is down, it's better to wait
+before building the prompt than to build it, send it, fail, and then wait.
+
+### Why Configurable Resilience Parameters
+
+Different backends have different reload characteristics:
+- LM Studio on consumer hardware: 30-60 seconds for a 26B model
+- vLLM on GPU servers: 10-30 seconds
+- Ollama with multiple models: may take 2+ minutes
+
+The `[resilience]` config section allows tuning to match the specific backend:
+- `max_retries` (default: 10) — enough for multiple crash-recovery cycles
+- `max_backoff_sec` (default: 120) — long enough for model reload
+- `health_check_interval_sec` (default: 10) — avoids hammering the backend
+- `health_check_timeout_sec` (default: 300) — 5 minutes to cover worst case
+
+**Rejected alternative: fixed long sleep.**
+A fixed 2-minute sleep before retry would work for some backends but waste time
+when the model reloads quickly (10 seconds). Polling adapts to the actual reload
+time.
+
 ## Why Parse Retry
 
 Local LLMs occasionally produce malformed JSON that `nlk/jsonfix` cannot

@@ -121,6 +121,23 @@ Settings are loaded in order: defaults → config file → env vars → CLI flag
 | `DATA_ANALYZER_LANG` | — | Output language (e.g., `Japanese`) |
 | `DATA_ANALYZER_TEMP_DIR` | `$TMPDIR/data-analyzer` | Checkpoint directory |
 
+### Resilience
+
+When the LLM backend crashes or unloads the model during long analysis sessions,
+the client automatically detects the failure and waits for the model to reload.
+Configurable via `[resilience]` in `config.toml`:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `max_retries` | `10` | Max retry attempts per LLM call |
+| `max_backoff_sec` | `120` | Max backoff wait between retries (seconds) |
+| `health_check_interval_sec` | `10` | Polling interval for model readiness (seconds) |
+| `health_check_timeout_sec` | `300` | Max wait for model to become ready (seconds) |
+
+On each retry, the client polls `/v1/models` to confirm the model is loaded
+before sending the next request. This prevents wasting retries while the
+backend is still reloading.
+
 ## How It Works
 
 ```

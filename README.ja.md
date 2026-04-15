@@ -120,6 +120,22 @@ cat result.json | data-analyzer compile -
 | `DATA_ANALYZER_LANG` | — | 出力言語（例：`Japanese`） |
 | `DATA_ANALYZER_TEMP_DIR` | `$TMPDIR/data-analyzer` | チェックポイントディレクトリ |
 
+### レジリエンス
+
+長時間の分析セッション中にLLMバックエンドがクラッシュまたはモデルをアンロードした場合、
+クライアントは自動的に障害を検出し、モデルのリロードを待機します。
+`config.toml`の`[resilience]`セクションで設定可能：
+
+| 設定 | デフォルト | 説明 |
+|------|-----------|------|
+| `max_retries` | `10` | LLMコールあたりの最大リトライ回数 |
+| `max_backoff_sec` | `120` | リトライ間の最大バックオフ待機（秒） |
+| `health_check_interval_sec` | `10` | モデル準備状態のポーリング間隔（秒） |
+| `health_check_timeout_sec` | `300` | モデル準備完了までの最大待機（秒） |
+
+各リトライ時に`/v1/models`をポーリングしてモデルのロード状態を確認してから
+次のリクエストを送信します。バックエンドがリロード中の無駄なリトライを防止します。
+
 ## 動作原理
 
 ```

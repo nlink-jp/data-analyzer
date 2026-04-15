@@ -72,6 +72,15 @@ Settings loaded: defaults → `~/.config/data-analyzer/config.toml` → env vars
 - `github.com/BurntSushi/toml` — TOML config parsing
 - `github.com/nlink-jp/nlk` — guard, backoff, strip, jsonfix, validate
 
+## Resilience
+
+- `[resilience]` config controls retry and health-check for model crash/unload
+- On model crash: client polls `/v1/models` until model reloads, then retries
+- Pre-flight health check before each window and final report LLM call
+- Default: 10 retries, 120s max backoff, 10s poll interval, 300s timeout
+- Crash patterns (`crashed`, `model not found`, `unloaded`) are retryable
+  regardless of HTTP status code (e.g., 400 with crash message)
+
 ## Gotchas
 
 - LLM client uses net/http directly (no OpenAI SDK)
@@ -80,3 +89,4 @@ Settings loaded: defaults → `~/.config/data-analyzer/config.toml` → env vars
 - Token estimation is approximate (CJK: 1 char ≈ 2 tokens, ASCII: 1 word ≈ 1.3 tokens)
 - Checkpoints use atomic file rename for durability
 - 5-minute HTTP timeout for local LLM inference
+- Model crash returns HTTP 400 (not 5xx) in some backends — handled by error message pattern matching
