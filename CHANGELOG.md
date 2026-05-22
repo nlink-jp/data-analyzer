@@ -1,5 +1,37 @@
 # Changelog
 
+## [0.3.3] - 2026-05-23
+
+### Added
+
+- **`package` Makefile target.** Build-all now produces the
+  cross-compiled binaries (and codesigns the darwin ones); the new
+  `package` target zips each with LICENSE + README.md using
+  versioned naming (`data-analyzer-vX.Y.Z-<os>-<arch>.zip`) and
+  notarizes the darwin zips. Previously zip was inlined into
+  `build-all`, producing version-less filenames.
+
+### Changed
+
+- **Darwin releases are now Developer ID signed and Apple-notarized.**
+  `data-analyzer-v0.3.3-darwin-{amd64,arm64}.zip` carry full Apple
+  Developer ID Application signatures and notarization tickets from
+  Apple. End users on macOS no longer need to bypass Gatekeeper
+  with right-click → Open or `xattr -d com.apple.quarantine` on
+  first launch; local users who place `data-analyzer` under
+  Dropbox-synced (or any other FileProvider-managed) paths are no
+  longer killed by macOS's ad-hoc + provenance distrust policy.
+  Pipeline: `scripts/codesign-darwin.sh` +
+  `scripts/notarize-darwin.sh`, driven by `make package`. Adopts
+  the org-wide convention in `nlink-jp/.github` CONVENTIONS.md
+  §Code Signing.
+- **Release zip filenames now embed the version**
+  (`data-analyzer-vX.Y.Z-<os>-<arch>.zip`), aligning with sibling
+  util-series tools. Previous v0.3.2 was source-only.
+
+No behaviour change to the binary itself — feature-wise this is
+identical to v0.3.2.
+
 ## [0.3.2] - 2026-05-03
 
 ### Fixed
