@@ -40,7 +40,10 @@ package: build-all
 		ext=""; \
 		if [ "$$os" = "windows" ]; then ext=".exe"; fi; \
 		cp ../LICENSE ../README.md .; \
-		zip -j "$(BINARY)-$(VERSION)-$$os-$$arch.zip" "$(BINARY)-$$os-$$arch$$ext" LICENSE README.md; \
+		stage="_pkg"; rm -rf "$$stage"; mkdir -p "$$stage"; \
+		cp "$(BINARY)-$$os-$$arch$$ext" "$$stage/$(BINARY)$$ext"; \
+		zip -j "$(BINARY)-$(VERSION)-$$os-$$arch.zip" "$$stage/$(BINARY)$$ext" LICENSE README.md; \
+		rm -rf "$$stage"; \
 		rm -f LICENSE README.md; \
 	done
 	@scripts/notarize-darwin.sh dist/$(BINARY)-$(VERSION)-darwin-amd64.zip "$(NOTARY_PROFILE)"
