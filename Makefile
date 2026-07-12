@@ -10,7 +10,8 @@ BINARY  := data-analyzer
 CODESIGN_IDENTITY ?= Developer ID Application
 NOTARY_PROFILE    ?= nlink-jp-notary
 
-PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+# darwin ships arm64 only (no amd64, no universal). linux/windows keep their matrix.
+PLATFORMS := darwin/arm64 linux/amd64 linux/arm64 windows/amd64
 
 .PHONY: build build-all package test clean
 
@@ -29,24 +30,21 @@ build-all:
 		echo "Building $$os/$$arch..."; \
 		GOOS=$$os GOARCH=$$arch go build -ldflags "$(LDFLAGS)" \
 			-o dist/$(BINARY)-$$os-$$arch$$ext . || exit 1; \
-		scripts/codesign-darwin.sh "dist/$(BINARY)-$$os-$$arch$$ext" "$(CODESIGN_IDENTITY)"; \
+		scripts/codesign-darwin.sh "dist/$(BINARY)-$$os-$$arch$$ext" "$(CODESIGN_IDENTITY)" "$(BINARY)"; \
 	done
 
 ## package: Cross-compile, sign, zip (versioned + LICENSE + README), notarize darwin → dist/
 package: build-all
-	@cd dist && for platform in $(PLATFORMS); do \
-		os=$${platform%/*}; \
-		arch=$${platform#*/}; \
-		ext=""; \
-		if [ "$$os" = "windows" ]; then ext=".exe"; fi; \
-		cp ../LICENSE ../README.md .; \
-		stage="_pkg"; rm -rf "$$stage"; mkdir -p "$$stage"; \
+	@cd dist && for p in $(PLATFORMS); do os=$${p%/*}; arch=$${p#*/}; \
+		ext=""; [ "$$os" = windows ] && ext=".exe"; \
+		stage=_pkg; rm -rf $$stage; mkdir -p $$stage; \
 		cp "$(BINARY)-$$os-$$arch$$ext" "$$stage/$(BINARY)$$ext"; \
-		zip -j "$(BINARY)-$(VERSION)-$$os-$$arch.zip" "$$stage/$(BINARY)$$ext" LICENSE README.md; \
-		rm -rf "$$stage"; \
-		rm -f LICENSE README.md; \
+		cp ../README.md ../LICENSE $$stage/; \
+		base="$(BINARY)-$(VERSION)-$$os-$$arch"; \
+		if [ "$$os" = linux ]; then ( cd $$stage && tar -czf "../$$base.tar.gz" * ); \
+		else ( cd $$stage && zip -q "../$$base.zip" * ); fi; \
+		rm -rf $$stage; \
 	done
-	@scripts/notarize-darwin.sh dist/$(BINARY)-$(VERSION)-darwin-amd64.zip "$(NOTARY_PROFILE)"
 	@scripts/notarize-darwin.sh dist/$(BINARY)-$(VERSION)-darwin-arm64.zip "$(NOTARY_PROFILE)"
 
 test:

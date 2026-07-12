@@ -22,7 +22,7 @@ Part of util-series.
 ```bash
 make build          # → dist/data-analyzer
 make test           # or: go test ./...
-make build-all      # cross-compile 5 platforms
+make build-all      # cross-compile 4 platforms (darwin arm64 only; no Intel)
 ```
 
 ## Architecture
