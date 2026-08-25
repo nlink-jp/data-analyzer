@@ -12,6 +12,7 @@ Part of util-series.
 make build        # → dist/data-analyzer
 make test         # go test ./...
 make build-all    # cross-compile 5 platforms + zip
+make verify-release  # gate: .notarized marker + freshness (run before upload)
 make clean        # rm -rf dist/
 ```
 
